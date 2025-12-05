@@ -427,4 +427,55 @@ textarea.input-nombre:focus {
 .table-responsive {
     content-visibility: auto;
     contain-intrinsic-size: 1px 1000px;
+
+}
+/* ==== ARREGLOS RESPONSIVE PARA LISTA DE ALMACÉN ==== */
+
+.item-lista {
+    border-bottom: 1px solid #f0f0f0;
+    padding: 12px 5px;
+}
+
+/* El texto del ítem debe ocupar espacio pero no empujar */
+.item-texto {
+    font-size: 1rem;
+    line-height: 1.4;
+    word-break: break-word; /* IMPORTANTE: Rompe palabras largas si es necesario */
+    display: block;
+    padding-right: 10px;
+}
+
+/* Ajustes específicos para móviles */
+@media (max-width: 768px) {
+    /* 1. Las tarjetas de lista ocupan todo el ancho */
+    .card-lista {
+        margin-bottom: 20px;
+    }
+
+    /* 2. El botón "Nueva Lista" se hace ancho completo y baja */
+    .d-flex.justify-content-between.flex-wrap {
+        flex-direction: column;
+        align-items: stretch !important;
+        gap: 15px;
+    }
+    
+    .d-flex.justify-content-between.flex-wrap h2 {
+        text-align: center;
+    }
+
+    /* 3. Ítems de la lista: Más espacio para el dedo */
+    .item-lista {
+        padding: 15px 0; /* Más alto para tocar fácil */
+    }
+
+    /* 4. Botón de eliminar (X) más grande en celular */
+    .item-lista .btn-outline-danger {
+        padding: 8px 12px;
+        font-size: 1.1rem; 
+    }
+    
+    /* 5. Historial con menos opacidad para leer mejor */
+    .historial-section {
+        opacity: 1; 
+    }
 }
