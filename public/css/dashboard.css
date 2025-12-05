@@ -1,0 +1,430 @@
+/* =========================================================
+   AYS SOFTWARE - MASTER CSS (FINAL FULL VERSION)
+   ========================================================= */
+
+/* 1. FUENTES Y VARIABLES */
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap');
+
+:root {
+    /* Paleta de Colores Moderna */
+    --primary: #4361ee;
+    /* Azul Principal */
+    --secondary: #3f37c9;
+    /* Azul Oscuro */
+    --success: #06d6a0;
+    /* Verde Éxito */
+    --danger: #ef476f;
+    /* Rojo Alerta */
+    --warning: #ffd166;
+    /* Amarillo Aviso */
+    --dark: #1e1e2d;
+    /* Fondo Oscuro (Sidebar) */
+    --light: #f0f2f5;
+    /* Fondo Claro (Body) */
+    --card-bg: #ffffff;
+    /* Fondo Tarjetas */
+
+    --text-main: #2b2d42;
+    --text-muted: #8d99ae;
+
+    --sidebar-width: 280px;
+    --shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.08);
+}
+
+* {
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Poppins', sans-serif;
+    background-color: var(--light);
+    color: var(--text-main);
+    margin: 0;
+    overflow-x: hidden;
+}
+
+/* 2. LOGIN (Glassmorphism) */
+.login-body {
+    background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+}
+
+.login-card {
+    background: rgba(255, 255, 255, 0.85);
+    backdrop-filter: blur(12px);
+    border-radius: 20px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.1);
+    width: 100%;
+    max-width: 420px;
+    overflow: hidden;
+}
+
+.login-header {
+    background: var(--dark);
+    padding: 40px 0;
+    text-align: center;
+    clip-path: ellipse(150% 100% at 50% 100%);
+    margin-bottom: 25px;
+}
+
+.login-header img {
+    height: 65px;
+    filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.3));
+}
+
+.form-floating>.form-control {
+    border-radius: 10px;
+    border: 1px solid #e0e0e0;
+}
+
+.form-floating>.form-control:focus {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 4px rgba(67, 97, 238, 0.15);
+}
+
+/* 3. SIDEBAR (Menú Lateral) */
+.sidebar {
+    width: var(--sidebar-width);
+    height: 100vh;
+    position: fixed;
+    top: 0;
+    left: 0;
+    background: var(--dark);
+    color: #fff;
+    transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    z-index: 1000;
+    overflow-y: auto;
+}
+
+.sidebar-header {
+    padding: 35px 20px;
+    text-align: center;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.sidebar-header h3 {
+    font-size: 1.5rem;
+    font-weight: 700;
+    background: linear-gradient(to right, #4361ee, #4cc9f0);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    margin: 0;
+}
+
+.sidebar-menu {
+    padding: 25px 15px;
+    list-style: none;
+    margin: 0;
+}
+
+.sidebar-menu li {
+    margin-bottom: 8px;
+}
+
+.sidebar-menu a {
+    display: flex;
+    align-items: center;
+    padding: 14px 20px;
+    color: #a0a0b0;
+    text-decoration: none;
+    border-radius: 12px;
+    transition: 0.3s;
+    font-size: 0.95rem;
+    font-weight: 500;
+}
+
+.sidebar-menu a:hover,
+.sidebar-menu a.active {
+    color: #fff;
+    background: linear-gradient(90deg, var(--primary) 0%, var(--secondary) 100%);
+    transform: translateX(5px);
+    box-shadow: 0 4px 15px rgba(67, 97, 238, 0.3);
+}
+
+.sidebar-menu i {
+    width: 25px;
+    text-align: center;
+    margin-right: 12px;
+}
+
+/* 4. CONTENIDO PRINCIPAL */
+.main-content {
+    margin-left: var(--sidebar-width);
+    padding: 40px;
+    transition: all 0.4s;
+    min-height: 100vh;
+}
+
+.card {
+    border: none;
+    border-radius: 16px;
+    box-shadow: var(--shadow);
+    background: var(--card-bg);
+    margin-bottom: 20px;
+    overflow: hidden;
+}
+
+.shadow-sm {
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05) !important;
+}
+
+/* Inputs y Botones */
+.form-control,
+.form-select {
+    border-radius: 10px;
+    padding: 10px 15px;
+    border: 1px solid #dee2e6;
+}
+
+.btn {
+    border-radius: 10px;
+    padding: 10px 24px;
+    font-weight: 500;
+    transition: transform 0.2s;
+}
+
+.btn:active {
+    transform: scale(0.96);
+}
+
+.btn-primary {
+    background: var(--primary);
+    border: none;
+}
+
+.btn-primary:hover {
+    background: var(--secondary);
+    box-shadow: 0 4px 12px rgba(67, 97, 238, 0.4);
+}
+
+/* 5. TABLAS (VERSIÓN ESCRITORIO) */
+.table {
+    margin-bottom: 0;
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+    table-layout: auto;
+}
+
+.table thead th {
+    background-color: #f8f9fa;
+    color: var(--text-muted);
+    font-weight: 600;
+    text-transform: uppercase;
+    font-size: 0.8rem;
+    padding: 18px 15px;
+    white-space: nowrap;
+}
+
+.table tbody td {
+    padding: 15px;
+    vertical-align: middle;
+    border-bottom: 1px solid #f1f1f1;
+    font-size: 0.95rem;
+}
+
+/* Solución para Texto Cortado en PC */
+.table tbody td:nth-child(2) {
+    /* Columna Nombre */
+    min-width: 250px;
+    white-space: normal;
+}
+
+/* Estilos para TEXTAREA (Nombres editables) */
+textarea.input-nombre {
+    border: 1px solid #eee;
+    background-color: #fcfcfc;
+    border-radius: 8px;
+    padding: 8px;
+    width: 100%;
+    min-width: 250px;
+    min-height: 50px;
+    resize: vertical;
+    font-family: inherit;
+    font-weight: 600;
+    line-height: 1.4;
+}
+
+textarea.input-nombre:focus {
+    border-color: var(--primary);
+    outline: none;
+    background-color: #fff;
+}
+
+/* Inputs de precios en tabla */
+.tabla-edicion input.form-control {
+    min-width: 90px;
+    background-color: #fcfcfc;
+}
+
+/* ESTILOS PARA LOS BOTONES SIMÉTRICOS (Duplicados) */
+.btns-simetricos {
+    display: flex;
+    gap: 10px;
+    width: 100%;
+}
+
+.btns-simetricos form,
+.btns-simetricos>a {
+    flex: 1;
+    /* Esto asegura 50% y 50% */
+    margin: 0;
+}
+
+.btns-simetricos .btn {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 8px 10px;
+}
+
+/* 6. RESPONSIVE DESIGN (MÓVIL) */
+.menu-toggle-btn {
+    display: none;
+}
+
+@media (max-width: 991px) {
+
+    /* Layout */
+    .sidebar {
+        transform: translateX(-100%);
+    }
+
+    .sidebar.active {
+        transform: translateX(0);
+        box-shadow: 0 0 100px rgba(0, 0, 0, 0.5);
+    }
+
+    .main-content {
+        margin-left: 0;
+        padding: 15px 15px 90px 15px;
+    }
+
+    /* Botón Flotante */
+    .menu-toggle-btn {
+        display: flex;
+        position: fixed;
+        bottom: 25px;
+        right: 25px;
+        z-index: 1001;
+        width: 60px;
+        height: 60px;
+        border-radius: 50%;
+        background: var(--primary);
+        color: white;
+        align-items: center;
+        justify-content: center;
+        box-shadow: 0 5px 20px rgba(67, 97, 238, 0.4);
+        font-size: 1.5rem;
+        border: none;
+        transition: transform 0.2s;
+    }
+
+    .menu-toggle-btn:active {
+        transform: scale(0.9);
+    }
+
+    /* --- TRANSFORMACIÓN TABLA A TARJETAS --- */
+    .table thead {
+        display: none;
+    }
+
+    .table tbody tr {
+        display: block;
+        margin-bottom: 20px;
+        background-color: #fff;
+        border-radius: 16px;
+        box-shadow: 0 5px 15px rgba(0, 0, 0, 0.05);
+        border: 1px solid #f0f0f0;
+        overflow: hidden;
+    }
+
+    .table tbody td {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        text-align: right;
+        padding: 12px 15px;
+        border-bottom: 1px solid #f8f9fa;
+        width: 100%;
+        min-height: 50px;
+    }
+
+    .table tbody td::before {
+        content: attr(data-label);
+        font-weight: 700;
+        color: #8d99ae;
+        font-size: 0.75rem;
+        text-transform: uppercase;
+        margin-right: auto;
+        text-align: left;
+    }
+
+    /* NOMBRE (Encabezado Azul) */
+    .table tbody td[data-label="Nombre"] {
+        display: block;
+        background: linear-gradient(135deg, var(--primary), var(--secondary));
+        color: white;
+        text-align: center;
+        padding: 15px;
+        font-size: 1.1rem;
+        font-weight: 600;
+        border-bottom: none;
+    }
+
+    .table tbody td[data-label="Nombre"]::before {
+        display: none;
+    }
+
+    /* TEXTAREA EN MÓVIL */
+    .table tbody td[data-label="Nombre"] textarea.input-nombre {
+        background: rgba(255, 255, 255, 0.95);
+        color: #000;
+        border: none;
+        text-align: center;
+        margin-top: 5px;
+    }
+
+    /* OCULTAR ETIQUETAS PARA BOTONES */
+    .table tbody td[data-label="Guardar"]::before,
+    .table tbody td[data-label="Acciones"]::before,
+    .table tbody td[data-label="Eliminar"]::before {
+        display: none;
+    }
+
+    /* ESTILOS CELDA DE BOTONES */
+    .table tbody td:last-child,
+    .table tbody td[data-label="Guardar"],
+    .table tbody td[data-label="Acciones"] {
+        justify-content: center;
+        background-color: #fafafa;
+        padding: 15px;
+        flex-direction: row;
+        /* Importante para botones simétricos lado a lado */
+    }
+
+    /* Botones anchos normales */
+    .table tbody td .btn {
+        width: 100%;
+    }
+
+    /* Inputs de precios en móvil */
+    .table tbody td input.form-control,
+    .table tbody td select.form-select {
+        width: 50% !important;
+        text-align: right;
+        max-width: 150px;
+    }
+}
+
+/* Optimizaciones */
+.table-responsive {
+    content-visibility: auto;
+    contain-intrinsic-size: 1px 1000px;
+}

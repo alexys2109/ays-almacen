@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Detector de Duplicados</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="/css/dashboard.css">
+
+    <style>
+        .btns-simetricos {
+            display: flex;
+            gap: 10px;
+            width: 100%;
+        }
+
+        .btns-simetricos form,
+        .btns-simetricos>a {
+            flex: 1;
+            /* Esto hace que ambos ocupen el mismo ancho (50/50) */
+            margin: 0;
+        }
+
+        .btns-simetricos .btn {
+            width: 100%;
+            height: 100%;
+            /* Misma altura */
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 8px 5px;
+        }
+
+        /* FORZAR LADO A LADO EN MÓVIL */
+        @media (max-width: 991px) {
+            .table tbody td:last-child {
+                flex-direction: row !important;
+                /* Obliga a estar en fila */
+                padding: 15px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <nav class="sidebar">
+        <div class="sidebar-header">
+            <h3>AYS SOFTWARE</h3>
+        </div>
+        <ul class="sidebar-menu">
+            <li><a href="/"><i class="fa-solid fa-magnifying-glass"></i> Buscar Productos</a></li>
+            <li><a href="/modificar"><i class="fa-solid fa-pen-to-square"></i> Modificar</a></li>
+            <li><a href="/agregar"><i class="fa-solid fa-circle-plus"></i> Agregar Producto</a></li>
+            <li><a href="/duplicados" class="active"><i class="fa-solid fa-clone"></i> Duplicados</a></li>
+            <li><a href="/eliminar-menu"><i class="fa-solid fa-trash-can"></i> Eliminar</a></li>
+            <li><a href="/lista"><i class="fa-solid fa-clipboard-list"></i> Lista Almacén</a></li>
+            <li style="margin-top: 40px;"><a href="/logout" class="text-danger"><i
+                        class="fa-solid fa-right-from-bracket"></i> Cerrar Sesión</a></li>
+        </ul>
+    </nav>
+    <button class="menu-toggle-btn" onclick="document.querySelector('.sidebar').classList.toggle('active')"><i
+            class="fa-solid fa-bars"></i></button>
+
+    <div class="main-content">
+        <h2 class="fw-bold text-dark mb-4"><i class="fa-solid fa-clone text-warning"></i> Duplicados (Fonéticos)</h2>
+
+        <% if (Object.keys(grupos).length===0) { %>
+            <div class="alert alert-success text-center p-5 shadow-sm">
+                <i class="fa-solid fa-check-circle fa-3x mb-3"></i>
+                <h4>¡Todo limpio!</h4>
+                <p>No se encontraron productos similares.</p>
+            </div>
+            <% } else { %>
+
+                <p class="text-muted mb-4">El sistema ha agrupado productos que suenan similar. Compara los precios y
+                    fecha para decidir.</p>
+
+                <div class="row">
+                    <% for (const [codigo, items] of Object.entries(grupos)) { %>
+                        <div class="col-12 mb-4">
+                            <div class="card border-warning shadow-sm">
+                                <div
+                                    class="card-header bg-warning bg-opacity-10 fw-bold d-flex justify-content-between align-items-center">
+                                    <span><i class="fa-solid fa-layer-group me-2"></i> Grupo: "<%= items[0].nombre %>
+                                            "</span>
+                                    <span class="badge bg-warning text-dark">
+                                        <%= items.length %> coincidencias
+                                    </span>
+                                </div>
+                                <div class="card-body p-0">
+                                    <div class="table-responsive">
+                                        <table class="table table-bordered mb-0 align-middle">
+                                            <thead class="table-light small text-muted text-center">
+                                                <tr>
+                                                    <th>ID</th>
+                                                    <th>Nombre</th>
+                                                    <th>Fecha</th>
+                                                    <th>P. Compra</th>
+                                                    <th>P. Mayor</th>
+                                                    <th>P. Unidad</th>
+                                                    <th style="min-width: 200px;">Acciones</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                <% items.forEach(p=> { %>
+                                                    <tr>
+                                                        <td data-label="ID" class="text-center">#<%= p.id %>
+                                                        </td>
+                                                        <td data-label="Nombre" class="fw-bold">
+                                                            <%= p.nombre %>
+                                                        </td>
+
+                                                        <td data-label="Fecha" class="small text-muted text-center">
+                                                            <% if(p.fecha) { %>
+                                                                <%= new Date(p.fecha).toLocaleDateString('es-PE') %>
+                                                                    <br>
+                                                                    <%= new Date(p.fecha).toLocaleTimeString('es-PE',
+                                                                        {hour: '2-digit' , minute:'2-digit'}) %>
+                                                                        <% } else { %> - <% } %>
+                                                        </td>
+
+                                                        <td data-label="P. Compra" class="text-secondary text-end">S/
+                                                            <%= parseFloat(p.precio_compra).toFixed(2) %>
+                                                        </td>
+                                                        <td data-label="P. Mayor" class="text-primary fw-bold text-end">
+                                                            S/ <%= parseFloat(p.precio_mayor).toFixed(2) %>
+                                                        </td>
+                                                        <td data-label="P. Unidad"
+                                                            class="text-success fw-bold text-end">S/ <%=
+                                                                parseFloat(p.precio_unidad).toFixed(2) %>
+                                                        </td>
+
+                                                        <td data-label="Acciones">
+                                                            <div class="btns-simetricos">
+
+                                                                <form action="/api/verificar/<%= p.id %>" method="POST">
+                                                                    <button type="submit"
+                                                                        class="btn btn-outline-success btn-sm"
+                                                                        title="Marcar como correcto">
+                                                                        <i class="fa-solid fa-check me-1"></i> Correcto
+                                                                    </button>
+                                                                </form>
+
+                                                                <a href="/eliminar/<%= p.id %>?origen=duplicados"
+                                                                    class="btn btn-danger btn-sm"
+                                                                    onclick="return confirm('¿Eliminar definitivo?');">
+                                                                    <i class="fa-solid fa-trash me-1"></i> Eliminar
+                                                                </a>
+
+                                                            </div>
+                                                        </td>
+                                                    </tr>
+                                                    <% }) %>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <% } %>
+                </div>
+                <% } %>
+    </div>
+    <script src="//instant.page/5.2.0" type="module"></script>
+    <script src="https://unpkg.com/nprogress@0.2.0/nprogress.js"></script>
+    <link rel="stylesheet" href="https://unpkg.com/nprogress@0.2.0/nprogress.css" />
+
+    <style>
+        /* Personalización de la barra (Color Azul AYS) */
+        #nprogress .bar {
+            background: var(--primary) !important;
+            height: 4px !important;
+        }
+
+        #nprogress .peg {
+            box-shadow: 0 0 10px var(--primary), 0 0 5px var(--primary) !important;
+        }
+
+        #nprogress .spinner-icon {
+            border-top-color: var(--primary) !important;
+            border-left-color: var(--primary) !important;
+        }
+
+        /* Cursor de espera mientras carga */
+        body.loading {
+            cursor: wait;
+        }
+    </style>
+
+    <script>
+        // Configuración
+        NProgress.configure({ showSpinner: false, speed: 500 });
+
+        // 1. Activar barra al hacer clic en enlaces del menú
+        document.querySelectorAll('.sidebar-menu a, .btn, a').forEach(link => {
+            link.addEventListener('click', function (e) {
+                // Si es un enlace real y no tiene # (anclas)
+                if (this.href && this.href.startsWith(window.location.origin) && !this.getAttribute('onclick')) {
+                    NProgress.start(); // Iniciar barra
+                    document.body.classList.add('loading'); // Poner cursor de reloj
+                }
+            });
+        });
+
+        // 2. Activar barra al enviar formularios
+        document.querySelectorAll('form').forEach(form => {
+            form.addEventListener('submit', function () {
+                NProgress.start();
+                document.body.classList.add('loading');
+            });
+        });
+
+        // 3. Finalizar barra cuando la nueva página carga (se detiene sola al cambiar, pero esto asegura)
+        window.addEventListener('load', function () {
+            NProgress.done();
+            document.body.classList.remove('loading');
+        });
+
+        // Finalizar si el usuario da al botón "Atrás" del navegador
+        window.addEventListener('pageshow', function () {
+            NProgress.done();
+            document.body.classList.remove('loading');
+        });
+    </script>
+</body>
+
+</html>
