@@ -21,7 +21,7 @@ app.use(cookieParser());
 //                 RUTAS
 // ==========================================
 
-// --- 1. INICIO ---
+// --- 1. INICIO (BUSCAR) ---
 app.get('/', async (req, res) => {
     const token = req.cookies.jwt;
     if (!token) return res.redirect('/login');
@@ -33,30 +33,46 @@ app.get('/', async (req, res) => {
     } catch (error) { res.clearCookie('jwt'); res.redirect('/login'); }
 });
 
-// --- 2. DUPLICADOS ---
+// --- 2. DUPLICADOS (CORREGIDO PARA TiDB CLOUD) ---
 app.get('/duplicados', async (req, res) => {
     const token = req.cookies.jwt;
     if (!token) return res.redirect('/login');
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
-    const query = `
-        SELECT p1.*, SOUNDEX(p1.nombre) as codigo_sonido 
-        FROM productos p1
-        INNER JOIN (
-            SELECT SOUNDEX(nombre) as sonido_grupo FROM productos
-            WHERE verificado = 0 GROUP BY sonido_grupo HAVING COUNT(*) > 1
-        ) p2 ON SOUNDEX(p1.nombre) = p2.sonido_grupo
-        WHERE p1.verificado = 0 ORDER BY p1.nombre ASC
-    `;
-    const [duplicados] = await db.query(query);
-    const grupos = {};
-    duplicados.forEach(prod => {
-        const key = prod.codigo_sonido;
-        if (!grupos[key]) grupos[key] = [];
-        grupos[key].push(prod);
-    });
-    res.render('duplicados', { usuario: decoded.user, grupos });
+    try {
+        // 1. Traemos TODOS los productos no verificados (Sin usar SOUNDEX en SQL)
+        const [productos] = await db.query('SELECT * FROM productos WHERE verificado = 0 ORDER BY nombre ASC');
+
+        // 2. Agrupamos por sonido usando JAVASCRIPT (No la base de datos)
+        const gruposTemp = {};
+        
+        productos.forEach(prod => {
+            // Calculamos el código fonético aquí
+            const codigo = soundexJS(prod.nombre);
+            
+            if (!gruposTemp[codigo]) {
+                gruposTemp[codigo] = [];
+            }
+            gruposTemp[codigo].push(prod);
+        });
+
+        // 3. Filtramos solo los que tienen más de 1 coincidencia
+        const gruposFinales = {};
+        for (const [codigo, items] of Object.entries(gruposTemp)) {
+            if (items.length > 1) {
+                gruposFinales[codigo] = items;
+            }
+        }
+
+        res.render('duplicados', { usuario: decoded.user, grupos: gruposFinales });
+
+    } catch (error) {
+        console.error("Error en duplicados:", error);
+        res.render('duplicados', { usuario: decoded.user, grupos: {} });
+    }
 });
+
+// API: VALIDAR PRODUCTO
 app.post('/api/verificar/:id', async (req, res) => {
     await db.query('UPDATE productos SET verificado = 1 WHERE id = ?', [req.params.id]);
     res.redirect('/duplicados');
@@ -73,8 +89,8 @@ app.get('/agregar', async (req, res) => {
 app.post('/agregar', async (req, res) => {
     let { nombre, precio_compra, precio_mayor, precio_unidad, categoria_id } = req.body;
     if (categoria_id === "") categoria_id = null;
-    await db.query('INSERT INTO productos (nombre, precio_compra, precio_mayor, precio_unidad, categoria_id) VALUES (?,?,?,?,?)',
-        [nombre, precio_compra, precio_mayor, precio_unidad, categoria_id]);
+    await db.query('INSERT INTO productos (nombre, precio_compra, precio_mayor, precio_unidad, categoria_id) VALUES (?,?,?,?,?)', 
+    [nombre, precio_compra, precio_mayor, precio_unidad, categoria_id]);
     res.redirect('/agregar?exito=true');
 });
 
@@ -90,7 +106,7 @@ app.get('/modificar', async (req, res) => {
 app.post('/modificar/guardar/:id', async (req, res) => {
     const { nombre, precio_compra, precio_mayor, precio_unidad, categoria_id } = req.body;
     await db.query('UPDATE productos SET nombre=?, precio_compra=?, precio_mayor=?, precio_unidad=?, categoria_id=? WHERE id=?',
-        [nombre, precio_compra, precio_mayor, precio_unidad, categoria_id, req.params.id]);
+    [nombre, precio_compra, precio_mayor, precio_unidad, categoria_id, req.params.id]);
     res.redirect('/modificar');
 });
 
@@ -110,22 +126,16 @@ app.get('/eliminar/:id', async (req, res) => {
     else res.redirect('/eliminar-menu');
 });
 
-// --- 6. LISTA DE ALMACÉN (MULTI-LISTA) ---
+// --- 6. LISTA ---
 app.get('/lista', async (req, res) => {
     const token = req.cookies.jwt;
     if (!token) return res.redirect('/login');
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-
-    // 1. Traer listas de HOY (Active)
+    
     const [listasHoy] = await db.query('SELECT * FROM listas WHERE fecha = CURDATE() ORDER BY id DESC');
-
-    // 2. Traer listas ANTERIORES (Historial - Últimos 7 días)
     const [listasHistorial] = await db.query('SELECT * FROM listas WHERE fecha < CURDATE() ORDER BY fecha DESC LIMIT 10');
-
-    // 3. Traer todos los ítems de estas listas
     const [items] = await db.query('SELECT * FROM items_lista');
 
-    // Función auxiliar para meter los ítems dentro de sus listas
     const armarListas = (listas) => {
         return listas.map(lista => {
             lista.items = items.filter(i => i.lista_id === lista.id);
@@ -133,53 +143,38 @@ app.get('/lista', async (req, res) => {
         });
     };
 
-    res.render('lista', {
-        usuario: decoded.user,
+    res.render('lista', { 
+        usuario: decoded.user, 
         listasHoy: armarListas(listasHoy),
         listasHistorial: armarListas(listasHistorial)
     });
 });
 
-// API: CREAR NUEVA LISTA (Ej: "Walter")
 app.post('/api/listas/crear', async (req, res) => {
     const { nombre_lista } = req.body;
-    if (nombre_lista) {
-        await db.query('INSERT INTO listas (nombre_lista, fecha) VALUES (?, CURDATE())', [nombre_lista]);
-    }
+    if(nombre_lista) await db.query('INSERT INTO listas (nombre_lista, fecha) VALUES (?, CURDATE())', [nombre_lista]);
     res.redirect('/lista');
 });
-
-// API: AGREGAR ÍTEM A UNA LISTA ESPECÍFICA
 app.post('/api/items/agregar', async (req, res) => {
     const { lista_id, texto } = req.body;
-    if (lista_id && texto) {
-        await db.query('INSERT INTO items_lista (lista_id, texto) VALUES (?, ?)', [lista_id, texto]);
-    }
+    if(lista_id && texto) await db.query('INSERT INTO items_lista (lista_id, texto) VALUES (?, ?)', [lista_id, texto]);
     res.redirect('/lista');
 });
-
-// API: TACHAR ÍTEM
 app.post('/api/items/toggle/:id', async (req, res) => {
     await db.query('UPDATE items_lista SET completado = NOT completado WHERE id = ?', [req.params.id]);
     res.sendStatus(200);
 });
-
-// API: ELIMINAR ÍTEM
 app.get('/api/items/eliminar/:id', async (req, res) => {
     await db.query('DELETE FROM items_lista WHERE id = ?', [req.params.id]);
     res.redirect('/lista');
 });
-
-// API: ELIMINAR LISTA COMPLETA
 app.get('/api/listas/eliminar/:id', async (req, res) => {
-    // Al borrar la lista, se borran los items por el CASCADE de la base de datos
     await db.query('DELETE FROM listas WHERE id = ?', [req.params.id]);
     res.redirect('/lista');
 });
 
-
 // --- LOGIN ---
-app.get('/login', (req, res) => { if (req.cookies.jwt) return res.redirect('/'); res.render('login'); });
+app.get('/login', (req, res) => { if(req.cookies.jwt) return res.redirect('/'); res.render('login'); });
 app.post('/login', async (req, res) => {
     const { username, password } = req.body;
     const [rows] = await db.query('SELECT * FROM usuarios WHERE username = ?', [username]);
@@ -192,3 +187,31 @@ app.get('/logout', (req, res) => { res.clearCookie('jwt'); res.redirect('/login'
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => { console.log(`🚀 Servidor listo en http://localhost:${PORT}`); });
+
+
+// ==========================================
+//   FUNCIÓN AUXILIAR: SOUNDEX EN JAVASCRIPT
+// ==========================================
+function soundexJS(s) {
+    if(!s) return "";
+    var a = s.toLowerCase().split('');
+    var f = a.shift(),
+        r = '',
+        codes = {
+            a: '', e: '', i: '', o: '', u: '',
+            b: 1, f: 1, p: 1, v: 1,
+            c: 2, g: 2, j: 2, k: 2, q: 2, s: 2, x: 2, z: 2,
+            d: 3, t: 3,
+            l: 4,
+            m: 5, n: 5,
+            r: 6
+        };
+    r = f +
+        a
+        .map(function (v, i, a) { return codes[v] })
+        .filter(function (v, i, a) {
+            return ((i === 0) ? v !== codes[f] : v !== a[i - 1]);
+        })
+        .join('');
+    return (r + '000').slice(0, 4).toUpperCase();
+}
