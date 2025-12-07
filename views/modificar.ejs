@@ -7,15 +7,24 @@
     
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    
     <script src="https://unpkg.com/nprogress@0.2.0/nprogress.js"></script>
     <link rel="stylesheet" href="https://unpkg.com/nprogress@0.2.0/nprogress.css" />
-    
     <link rel="stylesheet" href="/css/dashboard.css">
     
     <style>
         #nprogress .bar { background: var(--primary) !important; height: 4px !important; }
         body.loading { cursor: wait; }
+        
+        /* Animación suave para nuevos elementos */
+        .fila-producto { animation: fadeIn 0.5s ease-in; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        
+        /* El "Vigilante" invisible al final */
+        #sentinel { height: 20px; width: 100%; margin-top: 20px; }
+        
+        /* Spinner de carga al fondo */
+        .loader-scroll { text-align: center; color: var(--text-muted); display: none; padding: 20px; }
+        .loader-scroll.active { display: block; }
     </style>
 </head>
 <body>
@@ -39,66 +48,49 @@
         
         <div class="card border-0 shadow-sm mb-4">
             <div class="card-body py-3">
-                <div class="row g-2 align-items-center">
-                    
+                <form action="/modificar" method="GET" class="row g-2 align-items-center">
                     <div class="col-12 col-md-6">
                         <div class="input-group">
-                            <input type="text" id="buscador" class="form-control" placeholder="Escribe para buscar..." autocomplete="off">
-                            <button id="btnBuscar" class="btn btn-primary px-3 fw-bold">
-                                <i class="fa-solid fa-magnifying-glass"></i>
-                            </button>
+                            <input type="text" name="busqueda" id="inputBusqueda" class="form-control" placeholder="Escribe para buscar..." value="<%= busquedaActual %>" autocomplete="off">
+                            <button type="submit" class="btn btn-primary px-3 fw-bold"><i class="fa-solid fa-magnifying-glass"></i></button>
                         </div>
                     </div>
-
                     <div class="col-8 col-md-4">
-                        <select id="filtroCategoria" class="form-select">
+                        <select name="categoria" id="selectCategoria" class="form-select" onchange="this.form.submit()">
                             <option value="">-- Todas --</option>
                             <% categorias.forEach(c => { %>
-                                <option value="<%= c.id %>"><%= c.nombre %></option>
+                                <option value="<%= c.id %>" <%= c.id == categoriaActual ? 'selected' : '' %>><%= c.nombre %></option>
                             <% }) %>
                         </select>
                     </div>
-
                     <div class="col-4 col-md-2">
-                        <button id="btnReset" class="btn btn-outline-secondary w-100">
-                            <i class="fa-solid fa-rotate-left"></i>
-                        </button>
+                        <a href="/modificar" class="btn btn-outline-secondary w-100"><i class="fa-solid fa-rotate-left"></i></a>
                     </div>
-                </div>
+                </form>
             </div>
         </div>
 
         <div class="card border-0 shadow-sm bg-transparent">
             <div class="card-body p-0">
                 <div class="table-responsive">
-                    <table class="table align-middle mb-0 tabla-edicion" id="tablaProductos">
+                    <table class="table align-middle mb-0 tabla-edicion">
                         <thead class="table-light text-center">
                             <tr>
-                                <th>Nombre</th>
-                                <th>Compra</th>
-                                <th>Mayor</th>
-                                <th>Unidad</th>
-                                <th>Categoría</th>
-                                <th>Acción</th>
+                                <th>Nombre</th> <th>Compra</th> <th>Mayor</th> <th>Unidad</th> <th>Categoría</th> <th>Acción</th>
                             </tr>
                         </thead>
-                        <tbody>
-                            <% productos.forEach(p => { %>
-                                <tr data-categoria="<%= p.categoria_id %>" data-nombre="<%= p.nombre.toLowerCase() %>">
-                                    <form id="form-<%= p.id %>" action="/modificar/guardar/<%= p.id %>" method="POST"></form>
+                        <tbody id="tablaBody">
+                            <% if(productos.length === 0) { %>
+                                <tr><td colspan="6" class="text-center py-5 text-muted fst-italic">No se encontraron productos.</td></tr>
+                            <% } %>
 
-                                    <td data-label="Nombre">
-                                        <textarea name="nombre" class="form-control input-nombre" form="form-<%= p.id %>" required rows="1"><%= p.nombre %></textarea>
-                                    </td>
-                                    <td data-label="P. Compra">
-                                        <input type="number" step="0.01" name="precio_compra" class="form-control text-secondary" value="<%= p.precio_compra %>" form="form-<%= p.id %>">
-                                    </td>
-                                    <td data-label="P. Mayor">
-                                        <input type="number" step="0.01" name="precio_mayor" class="form-control fw-bold text-primary" value="<%= p.precio_mayor %>" form="form-<%= p.id %>">
-                                    </td>
-                                    <td data-label="P. Unidad">
-                                        <input type="number" step="0.01" name="precio_unidad" class="form-control fw-bold text-success" value="<%= p.precio_unidad %>" form="form-<%= p.id %>">
-                                    </td>
+                            <% productos.forEach(p => { %>
+                                <tr class="fila-producto">
+                                    <form id="form-<%= p.id %>" action="/modificar/guardar/<%= p.id %>" method="POST"></form>
+                                    <td data-label="Nombre"><textarea name="nombre" class="form-control input-nombre" form="form-<%= p.id %>" required rows="1"><%= p.nombre %></textarea></td>
+                                    <td data-label="P. Compra"><input type="number" step="0.01" name="precio_compra" class="form-control text-secondary" value="<%= p.precio_compra %>" form="form-<%= p.id %>"></td>
+                                    <td data-label="P. Mayor"><input type="number" step="0.01" name="precio_mayor" class="form-control fw-bold text-primary" value="<%= p.precio_mayor %>" form="form-<%= p.id %>"></td>
+                                    <td data-label="P. Unidad"><input type="number" step="0.01" name="precio_unidad" class="form-control fw-bold text-success" value="<%= p.precio_unidad %>" form="form-<%= p.id %>"></td>
                                     <td data-label="Categoría">
                                         <select name="categoria_id" class="form-select" form="form-<%= p.id %>">
                                             <option value="">-- Sin Categ. --</option>
@@ -108,111 +100,105 @@
                                         </select>
                                     </td>
                                     <td data-label="Guardar">
-                                        <button type="submit" class="btn btn-warning w-100 shadow-sm" form="form-<%= p.id %>">
-                                            <i class="fa-solid fa-floppy-disk me-2"></i> Guardar
-                                        </button>
+                                        <button type="submit" class="btn btn-warning w-100 shadow-sm" form="form-<%= p.id %>"><i class="fa-solid fa-floppy-disk me-2"></i> Guardar</button>
                                     </td>
                                 </tr>
                             <% }) %>
                         </tbody>
                     </table>
                 </div>
+
+                <div id="loader" class="loader-scroll">
+                    <i class="fa-solid fa-spinner fa-spin fa-lg"></i> Cargando más productos...
+                </div>
+
+                <div id="sentinel"></div>
             </div>
         </div>
     </div>
 
     <script>
-        const buscador = document.getElementById('buscador');
-        const btnBuscar = document.getElementById('btnBuscar');
-        const filtroCat = document.getElementById('filtroCategoria');
-        const btnReset = document.getElementById('btnReset');
-        const filas = document.querySelectorAll('#tablaProductos tbody tr');
+        const listaCategorias = <%- JSON.stringify(categorias) %>;
+        let busquedaActual = "<%= busquedaActual %>";
+        let categoriaActual = "<%= categoriaActual %>";
+    </script>
 
-        // VARIABLE PARA EL ANTI-LAG
-        let timeoutDeEscritura; 
+    <script>
+        let pagina = 1;
+        let cargando = false;
+        let finDeDatos = false;
 
-        // 1. LA LÓGICA DE FILTRADO (EL CEREBRO)
-        function ejecutarFiltrado() {
-            const texto = buscador.value.trim().toLowerCase();
-            const catId = filtroCat.value;
+        const loader = document.getElementById('loader');
+        const tablaBody = document.getElementById('tablaBody');
 
-            // Usamos requestAnimationFrame para que la animación sea suave
-            requestAnimationFrame(() => {
-                filas.forEach(fila => {
-                    // Obtenemos valores de los atributos DATA (Son mucho más rápidos de leer)
-                    const nombre = fila.getAttribute('data-nombre');
-                    const categoria = fila.getAttribute('data-categoria');
+        // Función que carga más datos
+        async function cargarMasProductos() {
+            if (cargando || finDeDatos) return;
+            
+            cargando = true;
+            loader.classList.add('active'); // Mostrar spinner abajo
+            pagina++; // Siguiente página
 
-                    const coincideTexto = texto === "" || nombre.includes(texto);
-                    const coincideCat = catId === "" || categoria === catId;
+            try {
+                // Llamamos a la API con los filtros actuales
+                const url = `/api/productos?page=${pagina}&busqueda=${encodeURIComponent(busquedaActual)}&categoria=${categoriaActual}`;
+                const res = await fetch(url);
+                const nuevos = await res.json();
 
-                    // Cambiamos visibilidad
-                    fila.style.display = (coincideTexto && coincideCat) ? '' : 'none';
-                });
-            });
+                if (nuevos.length === 0) {
+                    finDeDatos = true; // Ya no hay más, dejamos de pedir
+                    loader.innerHTML = '<span class="text-muted small">Fin de los resultados</span>';
+                } else {
+                    // Dibujamos los nuevos productos
+                    nuevos.forEach(p => {
+                        const opcionesCat = listaCategorias.map(c => 
+                            `<option value="${c.id}" ${p.categoria_id == c.id ? 'selected' : ''}>${c.nombre}</option>`
+                        ).join('');
+
+                        const html = `
+                            <tr class="fila-producto">
+                                <form id="form-${p.id}" action="/modificar/guardar/${p.id}" method="POST"></form>
+                                <td data-label="Nombre"><textarea name="nombre" class="form-control input-nombre" form="form-${p.id}" required rows="1">${p.nombre}</textarea></td>
+                                <td data-label="P. Compra"><input type="number" step="0.01" name="precio_compra" class="form-control text-secondary" value="${p.precio_compra}" form="form-${p.id}"></td>
+                                <td data-label="P. Mayor"><input type="number" step="0.01" name="precio_mayor" class="form-control fw-bold text-primary" value="${p.precio_mayor}" form="form-${p.id}"></td>
+                                <td data-label="P. Unidad"><input type="number" step="0.01" name="precio_unidad" class="form-control fw-bold text-success" value="${p.precio_unidad}" form="form-${p.id}"></td>
+                                <td data-label="Categoría">
+                                    <select name="categoria_id" class="form-select" form="form-${p.id}">
+                                        <option value="">-- Sin Categ. --</option>
+                                        ${opcionesCat}
+                                    </select>
+                                </td>
+                                <td data-label="Guardar">
+                                    <button type="submit" class="btn btn-warning w-100 shadow-sm" form="form-${p.id}"><i class="fa-solid fa-floppy-disk me-2"></i> Guardar</button>
+                                </td>
+                            </tr>
+                        `;
+                        tablaBody.insertAdjacentHTML('beforeend', html);
+                    });
+                }
+            } catch (error) {
+                console.error(error);
+            }
+
+            cargando = false;
+            loader.classList.remove('active'); // Ocultar spinner
         }
 
-        // 2. BUSCADOR AUTOMÁTICO (CON FRENO DE MANO)
-        buscador.addEventListener('input', function() {
-            // Si el usuario sigue escribiendo, cancelamos la búsqueda anterior
-            clearTimeout(timeoutDeEscritura);
-            
-            // Esperamos 300ms (0.3 segundos) antes de buscar.
-            // Si escribe rápido, esto evita que el celular se congele.
-            timeoutDeEscritura = setTimeout(() => {
-                ejecutarFiltrado();
-            }, 300);
-        });
-
-        // 3. BOTÓN MANUAL (BUSCA AL INSTANTE)
-        btnBuscar.addEventListener('click', () => {
-            clearTimeout(timeoutDeEscritura); // Cancelamos esperas
-            ejecutarFiltrado(); // Buscamos YA
-            buscador.blur(); // Ocultamos teclado
-        });
-
-        // 4. ENTER EN TECLADO
-        buscador.addEventListener('keypress', function (e) {
-            if (e.key === 'Enter') {
-                e.preventDefault();
-                clearTimeout(timeoutDeEscritura);
-                ejecutarFiltrado();
-                buscador.blur();
+        // EL VIGILANTE (IntersectionObserver)
+        // Detecta cuando llegas al fondo de la página
+        const observer = new IntersectionObserver((entries) => {
+            if (entries[0].isIntersecting) {
+                cargarMasProductos();
             }
-        });
+        }, { rootMargin: '100px' }); // Carga 100px antes de llegar al final para que sea suave
 
-        // 5. CAMBIO DE CATEGORÍA
-        filtroCat.addEventListener('change', ejecutarFiltrado);
+        // Iniciar vigilancia
+        const sentinel = document.getElementById('sentinel');
+        if (sentinel) observer.observe(sentinel);
 
-        // 6. BOTÓN LIMPIAR
-        btnReset.addEventListener('click', () => {
-            buscador.value = "";
-            filtroCat.value = "";
-            // Mostrar todo manualmente (más rápido que filtrar)
-            filas.forEach(fila => fila.style.display = '');
-        });
-
-        // --- BARRA DE CARGA VISUAL ---
-        NProgress.configure({ showSpinner: false, speed: 500 });
-        document.querySelectorAll('.sidebar-menu a, .btn, a').forEach(link => {
-            link.addEventListener('click', function(e) {
-                const href = this.getAttribute('href');
-                if(href && href.startsWith('/') && !href.startsWith('#') && !this.getAttribute('target')) {
-                    NProgress.start();
-                    document.body.classList.add('loading');
-                }
-            });
-        });
-        document.querySelectorAll('form').forEach(form => {
-            form.addEventListener('submit', function() {
-                NProgress.start();
-                document.body.classList.add('loading');
-            });
-        });
-        window.addEventListener('pageshow', function() {
-            NProgress.done();
-            document.body.classList.remove('loading');
-        });
+        // NProgress (Barra superior)
+        NProgress.configure({ showSpinner: false });
+        document.querySelectorAll('form').forEach(f => f.addEventListener('submit', () => NProgress.start()));
     </script>
 </body>
 </html>
