@@ -14,15 +14,9 @@
     <style>
         #nprogress .bar { background: var(--primary) !important; height: 4px !important; }
         body.loading { cursor: wait; }
-        
-        /* Animación suave para nuevos elementos */
-        .fila-producto { animation: fadeIn 0.5s ease-in; }
+        .fila-producto { animation: fadeIn 0.3s ease-in; }
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-        
-        /* El "Vigilante" invisible al final */
         #sentinel { height: 20px; width: 100%; margin-top: 20px; }
-        
-        /* Spinner de carga al fondo */
         .loader-scroll { text-align: center; color: var(--text-muted); display: none; padding: 20px; }
         .loader-scroll.active { display: block; }
     </style>
@@ -48,25 +42,28 @@
         
         <div class="card border-0 shadow-sm mb-4">
             <div class="card-body py-3">
-                <form action="/modificar" method="GET" class="row g-2 align-items-center">
+                <div class="row g-2 align-items-center">
+                    
                     <div class="col-12 col-md-6">
                         <div class="input-group">
-                            <input type="text" name="busqueda" id="inputBusqueda" class="form-control" placeholder="Escribe para buscar..." value="<%= busquedaActual %>" autocomplete="off">
-                            <button type="submit" class="btn btn-primary px-3 fw-bold"><i class="fa-solid fa-magnifying-glass"></i></button>
+                            <span class="input-group-text bg-white border-end-0"><i class="fa-solid fa-magnifying-glass text-muted"></i></span>
+                            <input type="text" id="inputBusqueda" class="form-control border-start-0" placeholder="Escribe para buscar..." autocomplete="off">
                         </div>
                     </div>
+
                     <div class="col-8 col-md-4">
-                        <select name="categoria" id="selectCategoria" class="form-select" onchange="this.form.submit()">
+                        <select id="selectCategoria" class="form-select">
                             <option value="">-- Todas --</option>
                             <% categorias.forEach(c => { %>
-                                <option value="<%= c.id %>" <%= c.id == categoriaActual ? 'selected' : '' %>><%= c.nombre %></option>
+                                <option value="<%= c.id %>"><%= c.nombre %></option>
                             <% }) %>
                         </select>
                     </div>
+
                     <div class="col-4 col-md-2">
-                        <a href="/modificar" class="btn btn-outline-secondary w-100"><i class="fa-solid fa-rotate-left"></i></a>
+                        <button id="btnReset" class="btn btn-outline-secondary w-100" title="Limpiar"><i class="fa-solid fa-rotate-left"></i></button>
                     </div>
-                </form>
+                </div>
             </div>
         </div>
 
@@ -80,125 +77,158 @@
                             </tr>
                         </thead>
                         <tbody id="tablaBody">
-                            <% if(productos.length === 0) { %>
-                                <tr><td colspan="6" class="text-center py-5 text-muted fst-italic">No se encontraron productos.</td></tr>
-                            <% } %>
-
-                            <% productos.forEach(p => { %>
-                                <tr class="fila-producto">
-                                    <form id="form-<%= p.id %>" action="/modificar/guardar/<%= p.id %>" method="POST"></form>
-                                    <td data-label="Nombre"><textarea name="nombre" class="form-control input-nombre" form="form-<%= p.id %>" required rows="1"><%= p.nombre %></textarea></td>
-                                    <td data-label="P. Compra"><input type="number" step="0.01" name="precio_compra" class="form-control text-secondary" value="<%= p.precio_compra %>" form="form-<%= p.id %>"></td>
-                                    <td data-label="P. Mayor"><input type="number" step="0.01" name="precio_mayor" class="form-control fw-bold text-primary" value="<%= p.precio_mayor %>" form="form-<%= p.id %>"></td>
-                                    <td data-label="P. Unidad"><input type="number" step="0.01" name="precio_unidad" class="form-control fw-bold text-success" value="<%= p.precio_unidad %>" form="form-<%= p.id %>"></td>
-                                    <td data-label="Categoría">
-                                        <select name="categoria_id" class="form-select" form="form-<%= p.id %>">
-                                            <option value="">-- Sin Categ. --</option>
-                                            <% categorias.forEach(c => { %>
-                                                <option value="<%= c.id %>" <%= p.categoria_id == c.id ? 'selected' : '' %>><%= c.nombre %></option>
-                                            <% }) %>
-                                        </select>
-                                    </td>
-                                    <td data-label="Guardar">
-                                        <button type="submit" class="btn btn-warning w-100 shadow-sm" form="form-<%= p.id %>"><i class="fa-solid fa-floppy-disk me-2"></i> Guardar</button>
-                                    </td>
-                                </tr>
-                            <% }) %>
-                        </tbody>
+                            </tbody>
                     </table>
                 </div>
 
                 <div id="loader" class="loader-scroll">
-                    <i class="fa-solid fa-spinner fa-spin fa-lg"></i> Cargando más productos...
+                    <i class="fa-solid fa-spinner fa-spin fa-lg"></i> Cargando...
                 </div>
-
+                
                 <div id="sentinel"></div>
             </div>
         </div>
     </div>
 
     <script>
+        // Guardamos las categorías para reconstruir el select dinámicamente
         const listaCategorias = <%- JSON.stringify(categorias) %>;
-        let busquedaActual = "<%= busquedaActual %>";
-        let categoriaActual = "<%= categoriaActual %>";
     </script>
 
     <script>
         let pagina = 1;
+        let busqueda = '';
+        let categoria = '';
         let cargando = false;
         let finDeDatos = false;
+        let timeoutBusqueda; // Para el "freno de mano"
 
-        const loader = document.getElementById('loader');
+        const inputBusqueda = document.getElementById('inputBusqueda');
+        const selectCategoria = document.getElementById('selectCategoria');
+        const btnReset = document.getElementById('btnReset');
         const tablaBody = document.getElementById('tablaBody');
+        const loader = document.getElementById('loader');
 
-        // Función que carga más datos
-        async function cargarMasProductos() {
-            if (cargando || finDeDatos) return;
-            
+        // --- FUNCIÓN PRINCIPAL: TRAER DATOS DEL SERVIDOR ---
+        async function fetchProductos(reset = false) {
+            if (cargando) return;
+            if (reset) {
+                pagina = 1;
+                finDeDatos = false;
+                tablaBody.innerHTML = ''; // Limpiamos tabla
+                loader.innerHTML = '<i class="fa-solid fa-spinner fa-spin fa-lg"></i> Buscando...';
+                loader.classList.add('active');
+            } else {
+                if (finDeDatos) return;
+                pagina++;
+                loader.innerHTML = '<i class="fa-solid fa-spinner fa-spin fa-lg"></i> Cargando más...';
+                loader.classList.add('active');
+            }
+
             cargando = true;
-            loader.classList.add('active'); // Mostrar spinner abajo
-            pagina++; // Siguiente página
 
             try {
-                // Llamamos a la API con los filtros actuales
-                const url = `/api/productos?page=${pagina}&busqueda=${encodeURIComponent(busquedaActual)}&categoria=${categoriaActual}`;
+                // LLAMADA MÁGICA A LA API
+                const url = `/api/productos?page=${pagina}&busqueda=${encodeURIComponent(busqueda)}&categoria=${categoria}`;
                 const res = await fetch(url);
-                const nuevos = await res.json();
+                const data = await res.json();
 
-                if (nuevos.length === 0) {
-                    finDeDatos = true; // Ya no hay más, dejamos de pedir
-                    loader.innerHTML = '<span class="text-muted small">Fin de los resultados</span>';
+                if (data.length === 0) {
+                    finDeDatos = true;
+                    if (reset) {
+                        tablaBody.innerHTML = '<tr><td colspan="6" class="text-center py-5 text-muted">No se encontraron productos.</td></tr>';
+                        loader.classList.remove('active');
+                    } else {
+                        loader.innerHTML = '<span class="text-muted small">Fin de los resultados</span>';
+                    }
                 } else {
-                    // Dibujamos los nuevos productos
-                    nuevos.forEach(p => {
-                        const opcionesCat = listaCategorias.map(c => 
-                            `<option value="${c.id}" ${p.categoria_id == c.id ? 'selected' : ''}>${c.nombre}</option>`
-                        ).join('');
-
-                        const html = `
-                            <tr class="fila-producto">
-                                <form id="form-${p.id}" action="/modificar/guardar/${p.id}" method="POST"></form>
-                                <td data-label="Nombre"><textarea name="nombre" class="form-control input-nombre" form="form-${p.id}" required rows="1">${p.nombre}</textarea></td>
-                                <td data-label="P. Compra"><input type="number" step="0.01" name="precio_compra" class="form-control text-secondary" value="${p.precio_compra}" form="form-${p.id}"></td>
-                                <td data-label="P. Mayor"><input type="number" step="0.01" name="precio_mayor" class="form-control fw-bold text-primary" value="${p.precio_mayor}" form="form-${p.id}"></td>
-                                <td data-label="P. Unidad"><input type="number" step="0.01" name="precio_unidad" class="form-control fw-bold text-success" value="${p.precio_unidad}" form="form-${p.id}"></td>
-                                <td data-label="Categoría">
-                                    <select name="categoria_id" class="form-select" form="form-${p.id}">
-                                        <option value="">-- Sin Categ. --</option>
-                                        ${opcionesCat}
-                                    </select>
-                                </td>
-                                <td data-label="Guardar">
-                                    <button type="submit" class="btn btn-warning w-100 shadow-sm" form="form-${p.id}"><i class="fa-solid fa-floppy-disk me-2"></i> Guardar</button>
-                                </td>
-                            </tr>
-                        `;
-                        tablaBody.insertAdjacentHTML('beforeend', html);
-                    });
+                    // DIBUJAR FILAS
+                    renderizarFilas(data);
+                    loader.classList.remove('active');
                 }
             } catch (error) {
                 console.error(error);
+                loader.innerText = 'Error de conexión';
             }
-
             cargando = false;
-            loader.classList.remove('active'); // Ocultar spinner
         }
 
-        // EL VIGILANTE (IntersectionObserver)
-        // Detecta cuando llegas al fondo de la página
+        // --- DIBUJAR HTML ---
+        function renderizarFilas(productos) {
+            let html = '';
+            productos.forEach(p => {
+                const opcionesCat = listaCategorias.map(c => 
+                    `<option value="${c.id}" ${p.categoria_id == c.id ? 'selected' : ''}>${c.nombre}</option>`
+                ).join('');
+
+                html += `
+                    <tr class="fila-producto">
+                        <form id="form-${p.id}" action="/modificar/guardar/${p.id}" method="POST"></form>
+                        <td data-label="Nombre"><textarea name="nombre" class="form-control input-nombre" form="form-${p.id}" required rows="1">${p.nombre}</textarea></td>
+                        <td data-label="P. Compra"><input type="number" step="0.01" name="precio_compra" class="form-control text-secondary" value="${p.precio_compra}" form="form-${p.id}"></td>
+                        <td data-label="P. Mayor"><input type="number" step="0.01" name="precio_mayor" class="form-control fw-bold text-primary" value="${p.precio_mayor}" form="form-${p.id}"></td>
+                        <td data-label="P. Unidad"><input type="number" step="0.01" name="precio_unidad" class="form-control fw-bold text-success" value="${p.precio_unidad}" form="form-${p.id}"></td>
+                        <td data-label="Categoría">
+                            <select name="categoria_id" class="form-select" form="form-${p.id}">
+                                <option value="">-- Sin Categ. --</option>
+                                ${opcionesCat}
+                            </select>
+                        </td>
+                        <td data-label="Guardar">
+                            <button type="submit" class="btn btn-warning w-100 shadow-sm" form="form-${p.id}"><i class="fa-solid fa-floppy-disk me-2"></i> Guardar</button>
+                        </td>
+                    </tr>
+                `;
+            });
+            tablaBody.insertAdjacentHTML('beforeend', html);
+        }
+
+        // --- EVENTOS INTELIGENTES ---
+
+        // 1. Escribir en el buscador (Con Freno de Mano / Debounce)
+        inputBusqueda.addEventListener('input', (e) => {
+            busqueda = e.target.value.trim();
+            clearTimeout(timeoutBusqueda); // Cancelamos búsqueda anterior
+            
+            // Esperamos 400ms a que termines de escribir
+            timeoutBusqueda = setTimeout(() => {
+                fetchProductos(true); // Buscar desde cero
+            }, 400);
+        });
+
+        // 2. Cambiar Categoría
+        selectCategoria.addEventListener('change', (e) => {
+            categoria = e.target.value;
+            fetchProductos(true);
+        });
+
+        // 3. Botón Limpiar
+        btnReset.addEventListener('click', () => {
+            inputBusqueda.value = '';
+            selectCategoria.value = '';
+            busqueda = '';
+            categoria = '';
+            fetchProductos(true);
+        });
+
+        // 4. Scroll Infinito (Observer)
         const observer = new IntersectionObserver((entries) => {
             if (entries[0].isIntersecting) {
-                cargarMasProductos();
+                fetchProductos(false); // Cargar MÁS (no resetear)
             }
-        }, { rootMargin: '100px' }); // Carga 100px antes de llegar al final para que sea suave
+        }, { rootMargin: '200px' }); // Cargar antes de llegar al final
 
-        // Iniciar vigilancia
         const sentinel = document.getElementById('sentinel');
         if (sentinel) observer.observe(sentinel);
 
-        // NProgress (Barra superior)
+        // 5. Carga Inicial
+        fetchProductos(true);
+
+        // Barra NProgress (Visual)
         NProgress.configure({ showSpinner: false });
-        document.querySelectorAll('form').forEach(f => f.addEventListener('submit', () => NProgress.start()));
+        document.addEventListener('submit', (e) => {
+            if(e.target.tagName === 'FORM') NProgress.start();
+        });
     </script>
 </body>
 </html>
