@@ -2,7 +2,8 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"> <title>Gestor de Listas</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Gestor de Listas</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
@@ -35,8 +36,8 @@
         
         <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-3">
             <div class="text-center text-md-start w-100 w-md-auto">
-                <h2 class="fw-bold text-dark m-0">Gestión de Pedidos</h2>
-                <p class="text-muted mb-0 small">Crea listas por persona.</p>
+                <h2 class="fw-bold text-dark m-0">Mis Listas Activas</h2>
+                <p class="text-muted mb-0 small">Estas listas permanecerán aquí hasta que las archives.</p>
             </div>
             
             <button onclick="crearLista()" class="btn btn-primary shadow-sm w-100 w-md-auto">
@@ -47,20 +48,21 @@
         <% if(listasHoy.length === 0) { %>
             <div class="text-center py-5">
                 <div class="mb-3 text-muted"><i class="fa-solid fa-clipboard-list fa-3x opacity-25"></i></div>
-                <h5 class="text-muted fw-normal">No hay listas para hoy.</h5>
+                <h5 class="text-muted fw-normal">No tienes listas activas.</h5>
             </div>
         <% } %>
 
-        <div class="row g-3 mb-5"> <% listasHoy.forEach(lista => { %>
+        <div class="row g-3 mb-5">
+            <% listasHoy.forEach(lista => { %>
                 <div class="col-12 col-md-6 col-lg-4">
                     <div class="card card-lista shadow-sm h-100">
-                        
                         <div class="card-header bg-white d-flex justify-content-between align-items-center py-3 border-bottom-0">
                             <h5 class="fw-bold m-0 text-primary text-truncate pe-2">
                                 <i class="fa-solid fa-user-pen me-2"></i><%= lista.nombre_lista %>
                             </h5>
-                            <a href="/api/listas/eliminar/<%= lista.id %>" class="btn btn-sm text-danger p-2" onclick="return confirm('¿Borrar lista?')" title="Eliminar Lista">
-                                <i class="fa-solid fa-trash-can fa-lg"></i>
+                            
+                            <a href="/api/listas/archivar/<%= lista.id %>" class="btn btn-sm btn-outline-secondary" title="Archivar (Mover a Historial)">
+                                <i class="fa-solid fa-box-archive"></i>
                             </a>
                         </div>
 
@@ -79,21 +81,17 @@
                                 <% } %>
                                 <% lista.items.forEach(item => { %>
                                     <li class="list-group-item d-flex justify-content-between align-items-center px-0 py-2 border-bottom-0 item-lista">
-                                        
                                         <div onclick="toggleItem('<%= item.id %>', this)" style="cursor:pointer" class="<%= item.completado ? 'tachado' : '' %> d-flex align-items-center flex-grow-1 pe-2">
                                             <i class="fa-regular <%= item.completado ? 'fa-square-check text-success' : 'fa-square text-muted' %> me-3 fa-lg"></i>
                                             <span class="item-texto"><%= item.texto %></span>
                                         </div>
-
-                                        <a href="/api/items/eliminar/<%= item.id %>" class="text-danger p-2">
-                                            <i class="fa-solid fa-xmark fa-lg"></i>
-                                        </a>
+                                        <a href="/api/items/eliminar/<%= item.id %>" class="text-danger p-2"><i class="fa-solid fa-xmark fa-lg"></i></a>
                                     </li>
                                 <% }) %>
                             </ul>
                         </div>
                         <div class="card-footer bg-white border-0 text-muted small text-end pt-0 pb-3">
-                            <span class="badge-fecha">Hoy</span>
+                            <span class="badge-fecha"><%= new Date(lista.fecha).toLocaleDateString('es-PE') %></span>
                         </div>
                     </div>
                 </div>
@@ -102,7 +100,7 @@
 
         <% if(listasHistorial.length > 0) { %>
             <hr class="my-5">
-            <h4 class="fw-bold text-muted mb-4 fs-5"><i class="fa-solid fa-clock-rotate-left me-2"></i> Historial</h4>
+            <h4 class="fw-bold text-muted mb-4 fs-5"><i class="fa-solid fa-box-archive me-2"></i> Historial / Archivados</h4>
             
             <div class="row g-3 opacity-75 historial-section">
                 <% listasHistorial.forEach(lista => { %>
@@ -110,20 +108,22 @@
                         <div class="card shadow-sm h-100 border-0 bg-light">
                             <div class="card-header bg-transparent d-flex justify-content-between align-items-center">
                                 <strong class="text-dark text-truncate"><%= lista.nombre_lista %></strong>
-                                <span class="badge-fecha"><%= new Date(lista.fecha).toLocaleDateString('es-PE') %></span>
+                                
+                                <div>
+                                    <a href="/api/listas/restaurar/<%= lista.id %>" class="btn btn-sm btn-success me-1" title="Restaurar Lista">
+                                        <i class="fa-solid fa-rotate-left"></i>
+                                    </a>
+                                    <a href="/api/listas/eliminar/<%= lista.id %>" class="btn btn-sm btn-danger" onclick="return confirm('¿Borrar definitivamente?')" title="Borrar">
+                                        <i class="fa-solid fa-trash-can"></i>
+                                    </a>
+                                </div>
                             </div>
                             <div class="card-body">
                                 <ul class="list-unstyled mb-0 small text-muted">
                                     <% lista.items.forEach(item => { %>
-                                        <li class="mb-1 text-truncate">
-                                            <i class="fa-solid fa-check text-success me-1"></i> <%= item.texto %>
-                                        </li>
+                                        <li class="mb-1 text-truncate"><i class="fa-solid fa-check text-success me-1"></i> <%= item.texto %></li>
                                     <% }) %>
-                                    <% if(lista.items.length === 0) { %> <li>(Sin ítems)</li> <% } %>
                                 </ul>
-                            </div>
-                            <div class="card-footer bg-transparent border-0 text-end">
-                                <a href="/api/listas/eliminar/<%= lista.id %>" class="text-danger small text-decoration-none p-2" onclick="return confirm('¿Borrar?')">Eliminar</a>
                             </div>
                         </div>
                     </div>
@@ -136,38 +136,23 @@
     <script>
         async function crearLista() {
             const { value: nombre } = await Swal.fire({
-                title: 'Nueva Lista',
-                input: 'text',
-                inputLabel: 'Nombre (Ej: Walter)',
-                inputPlaceholder: 'Escribe aquí...',
-                showCancelButton: true,
-                confirmButtonText: 'Crear',
-                confirmButtonColor: '#4361ee'
+                title: 'Nueva Lista', input: 'text', inputLabel: 'Nombre (Ej: Walter)', inputPlaceholder: 'Escribe aquí...',
+                showCancelButton: true, confirmButtonText: 'Crear', confirmButtonColor: '#4361ee'
             });
-
             if (nombre) {
                 const form = document.createElement('form');
-                form.method = 'POST';
-                form.action = '/api/listas/crear';
+                form.method = 'POST'; form.action = '/api/listas/crear';
                 const input = document.createElement('input');
-                input.name = 'nombre_lista';
-                input.value = nombre;
-                form.appendChild(input);
-                document.body.appendChild(form);
-                form.submit();
+                input.name = 'nombre_lista'; input.value = nombre;
+                form.appendChild(input); document.body.appendChild(form); form.submit();
             }
         }
-
         function toggleItem(id, elemento) {
-            const container = elemento; 
-            const icon = container.querySelector('i');
-            
+            const container = elemento; const icon = container.querySelector('i');
             if (container.classList.contains('tachado')) {
-                container.classList.remove('tachado');
-                icon.className = 'fa-regular fa-square text-muted me-3 fa-lg';
+                container.classList.remove('tachado'); icon.className = 'fa-regular fa-square text-muted me-3 fa-lg';
             } else {
-                container.classList.add('tachado');
-                icon.className = 'fa-regular fa-square-check text-success me-3 fa-lg';
+                container.classList.add('tachado'); icon.className = 'fa-regular fa-square-check text-success me-3 fa-lg';
             }
             fetch('/api/items/toggle/' + id, { method: 'POST' }).catch(console.error);
         }
