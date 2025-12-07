@@ -14,9 +14,7 @@
     <link rel="stylesheet" href="/css/dashboard.css">
     
     <style>
-        /* Personalización NProgress */
         #nprogress .bar { background: var(--primary) !important; height: 4px !important; }
-        #nprogress .peg { box-shadow: 0 0 10px var(--primary), 0 0 5px var(--primary) !important; }
         body.loading { cursor: wait; }
     </style>
 </head>
@@ -34,28 +32,27 @@
             <li style="margin-top: 40px;"><a href="/logout" class="text-danger"><i class="fa-solid fa-right-from-bracket"></i> Cerrar Sesión</a></li>
         </ul>
     </nav>
-    
-    <button class="menu-toggle-btn" onclick="document.querySelector('.sidebar').classList.toggle('active')">
-        <i class="fa-solid fa-bars"></i>
-    </button>
+    <button class="menu-toggle-btn" onclick="document.querySelector('.sidebar').classList.toggle('active')"><i class="fa-solid fa-bars"></i></button>
 
     <div class="main-content">
         <h2 class="fw-bold text-warning mb-4">Modificar Inventario</h2>
         
         <div class="card border-0 shadow-sm mb-4">
             <div class="card-body py-3">
-                <div class="row g-2">
+                <div class="row g-2 align-items-center">
                     
                     <div class="col-12 col-md-6">
                         <div class="input-group">
-                            <span class="input-group-text bg-white border-end-0"><i class="fa-solid fa-search text-muted"></i></span>
-                            <input type="text" id="buscador" class="form-control border-start-0" placeholder="Buscar producto..." autocomplete="off">
+                            <input type="text" id="buscador" class="form-control" placeholder="Escribe para buscar..." autocomplete="off">
+                            <button id="btnBuscar" class="btn btn-primary px-3 fw-bold">
+                                <i class="fa-solid fa-magnifying-glass"></i>
+                            </button>
                         </div>
                     </div>
 
                     <div class="col-8 col-md-4">
                         <select id="filtroCategoria" class="form-select">
-                            <option value="">-- Todas las Categorías --</option>
+                            <option value="">-- Todas --</option>
                             <% categorias.forEach(c => { %>
                                 <option value="<%= c.id %>"><%= c.nombre %></option>
                             <% }) %>
@@ -63,7 +60,7 @@
                     </div>
 
                     <div class="col-4 col-md-2">
-                        <button id="btnReset" class="btn btn-outline-secondary w-100" title="Limpiar filtros">
+                        <button id="btnReset" class="btn btn-outline-secondary w-100">
                             <i class="fa-solid fa-rotate-left"></i>
                         </button>
                     </div>
@@ -77,7 +74,7 @@
                     <table class="table align-middle mb-0 tabla-edicion" id="tablaProductos">
                         <thead class="table-light text-center">
                             <tr>
-                                <th>Nombre del Producto</th>
+                                <th>Nombre</th>
                                 <th>Compra</th>
                                 <th>Mayor</th>
                                 <th>Unidad</th>
@@ -88,13 +85,11 @@
                         <tbody>
                             <% productos.forEach(p => { %>
                                 <tr data-categoria="<%= p.categoria_id %>" data-nombre="<%= p.nombre.toLowerCase() %>">
-                                    
                                     <form id="form-<%= p.id %>" action="/modificar/guardar/<%= p.id %>" method="POST"></form>
 
                                     <td data-label="Nombre">
                                         <textarea name="nombre" class="form-control input-nombre" form="form-<%= p.id %>" required rows="1"><%= p.nombre %></textarea>
                                     </td>
-                                    
                                     <td data-label="P. Compra">
                                         <input type="number" step="0.01" name="precio_compra" class="form-control text-secondary" value="<%= p.precio_compra %>" form="form-<%= p.id %>">
                                     </td>
@@ -104,7 +99,6 @@
                                     <td data-label="P. Unidad">
                                         <input type="number" step="0.01" name="precio_unidad" class="form-control fw-bold text-success" value="<%= p.precio_unidad %>" form="form-<%= p.id %>">
                                     </td>
-                                    
                                     <td data-label="Categoría">
                                         <select name="categoria_id" class="form-select" form="form-<%= p.id %>">
                                             <option value="">-- Sin Categ. --</option>
@@ -113,7 +107,6 @@
                                             <% }) %>
                                         </select>
                                     </td>
-
                                     <td data-label="Guardar">
                                         <button type="submit" class="btn btn-warning w-100 shadow-sm" form="form-<%= p.id %>">
                                             <i class="fa-solid fa-floppy-disk me-2"></i> Guardar
@@ -130,51 +123,77 @@
 
     <script>
         const buscador = document.getElementById('buscador');
+        const btnBuscar = document.getElementById('btnBuscar');
         const filtroCat = document.getElementById('filtroCategoria');
         const btnReset = document.getElementById('btnReset');
         const filas = document.querySelectorAll('#tablaProductos tbody tr');
 
-        function filtrar() {
-            const texto = buscador.value.toLowerCase();
+        // VARIABLE PARA EL ANTI-LAG
+        let timeoutDeEscritura; 
+
+        // 1. LA LÓGICA DE FILTRADO (EL CEREBRO)
+        function ejecutarFiltrado() {
+            const texto = buscador.value.trim().toLowerCase();
             const catId = filtroCat.value;
 
-            filas.forEach(fila => {
-                // Buscamos dentro del TEXTAREA (lo que el usuario ve/edita)
-                const inputNombre = fila.querySelector('textarea[name="nombre"]');
-                const nombreActual = inputNombre ? inputNombre.value.toLowerCase() : '';
-                
-                // Obtenemos la categoría original (del data attribute) o del select
-                const categoriaOriginal = fila.getAttribute('data-categoria');
-                const selectCat = fila.querySelector('select[name="categoria_id"]');
-                const categoriaActual = selectCat ? selectCat.value : categoriaOriginal;
+            // Usamos requestAnimationFrame para que la animación sea suave
+            requestAnimationFrame(() => {
+                filas.forEach(fila => {
+                    // Obtenemos valores de los atributos DATA (Son mucho más rápidos de leer)
+                    const nombre = fila.getAttribute('data-nombre');
+                    const categoria = fila.getAttribute('data-categoria');
 
-                // Lógica de coincidencia
-                const coincideTexto = nombreActual.includes(texto);
-                const coincideCat = catId === "" || categoriaActual == catId;
+                    const coincideTexto = texto === "" || nombre.includes(texto);
+                    const coincideCat = catId === "" || categoria === catId;
 
-                if (coincideTexto && coincideCat) {
-                    fila.style.display = '';
-                } else {
-                    fila.style.display = 'none';
-                }
+                    // Cambiamos visibilidad
+                    fila.style.display = (coincideTexto && coincideCat) ? '' : 'none';
+                });
             });
         }
 
-        // EVENTO 'INPUT': Detecta cambios al instante en cualquier celular
-        buscador.addEventListener('input', filtrar);
-        filtroCat.addEventListener('change', filtrar);
-        
+        // 2. BUSCADOR AUTOMÁTICO (CON FRENO DE MANO)
+        buscador.addEventListener('input', function() {
+            // Si el usuario sigue escribiendo, cancelamos la búsqueda anterior
+            clearTimeout(timeoutDeEscritura);
+            
+            // Esperamos 300ms (0.3 segundos) antes de buscar.
+            // Si escribe rápido, esto evita que el celular se congele.
+            timeoutDeEscritura = setTimeout(() => {
+                ejecutarFiltrado();
+            }, 300);
+        });
+
+        // 3. BOTÓN MANUAL (BUSCA AL INSTANTE)
+        btnBuscar.addEventListener('click', () => {
+            clearTimeout(timeoutDeEscritura); // Cancelamos esperas
+            ejecutarFiltrado(); // Buscamos YA
+            buscador.blur(); // Ocultamos teclado
+        });
+
+        // 4. ENTER EN TECLADO
+        buscador.addEventListener('keypress', function (e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                clearTimeout(timeoutDeEscritura);
+                ejecutarFiltrado();
+                buscador.blur();
+            }
+        });
+
+        // 5. CAMBIO DE CATEGORÍA
+        filtroCat.addEventListener('change', ejecutarFiltrado);
+
+        // 6. BOTÓN LIMPIAR
         btnReset.addEventListener('click', () => {
             buscador.value = "";
             filtroCat.value = "";
-            filtrar(); // Restablecer vista
+            // Mostrar todo manualmente (más rápido que filtrar)
+            filas.forEach(fila => fila.style.display = '');
         });
-    </script>
 
-    <script>
+        // --- BARRA DE CARGA VISUAL ---
         NProgress.configure({ showSpinner: false, speed: 500 });
-
-        // Activar barra al hacer clic en enlaces válidos
         document.querySelectorAll('.sidebar-menu a, .btn, a').forEach(link => {
             link.addEventListener('click', function(e) {
                 const href = this.getAttribute('href');
@@ -184,21 +203,16 @@
                 }
             });
         });
-
-        // Activar al enviar formularios
         document.querySelectorAll('form').forEach(form => {
             form.addEventListener('submit', function() {
                 NProgress.start();
                 document.body.classList.add('loading');
             });
         });
-
-        // Finalizar carga al volver atrás
         window.addEventListener('pageshow', function() {
             NProgress.done();
             document.body.classList.remove('loading');
         });
     </script>
-
 </body>
 </html>
