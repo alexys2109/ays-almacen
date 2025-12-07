@@ -4,16 +4,16 @@ const cookieParser = require('cookie-parser');
 const jwt = require('jsonwebtoken');
 const dotenv = require('dotenv');
 const compression = require('compression');
-const db = require('./src/config/db'); // Conexión a Base de Datos
+const db = require('./src/config/db'); // Tu conexión a TiDB
 
 dotenv.config();
 const app = express();
 
-// --- OPTIMIZACIONES (VELOCIDAD Y CACHÉ) ---
-app.use(compression());
+// --- CONFIGURACIÓN Y MIDDLEWARE ---
+app.use(compression()); // Comprimir respuestas (Velocidad)
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
-app.use(express.static(path.join(__dirname, 'public'), { maxAge: '1d' })); // Caché de 1 día para CSS/Imágenes
+app.use(express.static(path.join(__dirname, 'public'), { maxAge: '1d' })); // Cachear CSS
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 app.use(cookieParser());
@@ -22,13 +22,13 @@ app.use(cookieParser());
 //                 RUTAS
 // ==========================================
 
-// --- 1. INICIO (BUSCAR CON FILTROS) ---
+// --- 1. INICIO (BUSCAR) ---
 app.get('/', async (req, res) => {
     const token = req.cookies.jwt;
     if (!token) return res.redirect('/login');
     try {
         const decoded = jwt.verify(token, process.env.JWT_SECRET);
-        // Traemos productos Y categorías para los filtros del buscador
+        // Traemos todo para los filtros del buscador
         const [productos] = await db.query('SELECT * FROM productos ORDER BY nombre ASC');
         const [categorias] = await db.query('SELECT * FROM categorias ORDER BY nombre ASC');
         
@@ -36,17 +36,16 @@ app.get('/', async (req, res) => {
     } catch (error) { res.clearCookie('jwt'); res.redirect('/login'); }
 });
 
-// --- 2. DUPLICADOS (LÓGICA JAVASCRIPT PARA TiDB) ---
+// --- 2. DUPLICADOS (LÓGICA JS PARA TiDB) ---
 app.get('/duplicados', async (req, res) => {
     const token = req.cookies.jwt;
     if (!token) return res.redirect('/login');
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
     try {
-        // 1. Traer productos NO verificados
         const [productos] = await db.query('SELECT * FROM productos WHERE verificado = 0 ORDER BY nombre ASC');
 
-        // 2. Agrupar por sonido (Soundex) usando JAVASCRIPT
+        // Agrupamos por sonido usando JS (porque TiDB no tiene SOUNDEX)
         const gruposTemp = {};
         productos.forEach(prod => {
             const codigo = soundexJS(prod.nombre);
@@ -54,7 +53,7 @@ app.get('/duplicados', async (req, res) => {
             gruposTemp[codigo].push(prod);
         });
 
-        // 3. Filtrar solo los grupos que tienen más de 1 producto (repetidos)
+        // Solo enviamos los que tienen repetidos
         const gruposFinales = {};
         for (const [codigo, items] of Object.entries(gruposTemp)) {
             if (items.length > 1) gruposFinales[codigo] = items;
@@ -67,144 +66,168 @@ app.get('/duplicados', async (req, res) => {
     }
 });
 
-// API: Validar Producto (Quitar de duplicados)
 app.post('/api/verificar/:id', async (req, res) => {
     await db.query('UPDATE productos SET verificado = 1 WHERE id = ?', [req.params.id]);
     res.redirect('/duplicados');
 });
 
-// --- 3. AGREGAR PRODUCTO ---
+// --- 3. AGREGAR ---
 app.get('/agregar', async (req, res) => {
     const token = req.cookies.jwt;
     if (!token) return res.redirect('/login');
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    
-    // Necesitamos categorías para el select
     const [categorias] = await db.query('SELECT * FROM categorias ORDER BY nombre ASC');
     res.render('agregar', { usuario: decoded.user, categorias, exito: req.query.exito });
 });
 
 app.post('/agregar', async (req, res) => {
     let { nombre, precio_compra, precio_mayor, precio_unidad, categoria_id } = req.body;
-    
-    // Si la categoría viene vacía, enviamos NULL a la BD
     if (categoria_id === "") categoria_id = null;
-
-    await db.query(
-        'INSERT INTO productos (nombre, precio_compra, precio_mayor, precio_unidad, categoria_id) VALUES (?,?,?,?,?)', 
-        [nombre, precio_compra, precio_mayor, precio_unidad, categoria_id]
-    );
+    await db.query('INSERT INTO productos (nombre, precio_compra, precio_mayor, precio_unidad, categoria_id) VALUES (?,?,?,?,?)', 
+    [nombre, precio_compra, precio_mayor, precio_unidad, categoria_id]);
     res.redirect('/agregar?exito=true');
 });
 
-// --- 4. MODIFICAR (CON FILTROS) ---
+// --- 4. MODIFICAR (OPTIMIZADO: SCROLL INFINITO) ---
+// Esta ruta carga la vista inicial. SIEMPRE limita a 20 para que el celular no se trabe.
 app.get('/modificar', async (req, res) => {
     const token = req.cookies.jwt;
     if (!token) return res.redirect('/login');
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
-    // Traemos productos y categorías para poder filtrar en la vista
-    const [productos] = await db.query('SELECT * FROM productos ORDER BY nombre ASC');
+    const busqueda = req.query.busqueda || ''; 
+    const catId = req.query.categoria || '';
+
+    let queryProductos = 'SELECT * FROM productos';
+    let condiciones = [];
+    let parametros = [];
+
+    // Filtros de búsqueda inicial
+    if (busqueda) {
+        condiciones.push('nombre LIKE ?');
+        parametros.push(`%${busqueda}%`);
+    }
+    if (catId) {
+        condiciones.push('categoria_id = ?');
+        parametros.push(catId);
+    }
+
+    if (condiciones.length > 0) {
+        queryProductos += ' WHERE ' + condiciones.join(' AND ');
+    }
+
+    // LIMIT 20 OBLIGATORIO: La clave para la velocidad en móviles
+    queryProductos += ' ORDER BY nombre ASC LIMIT 20';
+
+    const [productos] = await db.query(queryProductos, parametros);
     const [categorias] = await db.query('SELECT * FROM categorias ORDER BY nombre ASC');
 
-    res.render('modificar', { usuario: decoded.user, productos, categorias });
+    res.render('modificar', { 
+        usuario: decoded.user, 
+        productos, 
+        categorias,
+        busquedaActual: busqueda,
+        categoriaActual: catId
+    });
+});
+
+// --- 4.1 API DE PRODUCTOS (PARA EL SCROLL INFINITO) ---
+// El celular llama a esta ruta en segundo plano para pedir más datos
+app.get('/api/productos', async (req, res) => {
+    const { busqueda, categoria, page } = req.query;
+    const limit = 20; 
+    const offset = (page - 1) * limit; // Calcular el salto (Pág 2 salta 20, Pág 3 salta 40...)
+
+    let query = 'SELECT * FROM productos';
+    let params = [];
+    let condiciones = [];
+
+    if (busqueda) {
+        condiciones.push('nombre LIKE ?');
+        params.push(`%${busqueda}%`);
+    }
+    if (categoria) {
+        condiciones.push('categoria_id = ?');
+        params.push(categoria);
+    }
+
+    if (condiciones.length > 0) query += ' WHERE ' + condiciones.join(' AND ');
+
+    query += ' ORDER BY nombre ASC LIMIT ? OFFSET ?';
+    params.push(limit, offset);
+
+    const [productos] = await db.query(query, params);
+    res.json(productos); // Responde JSON ligero al celular
 });
 
 app.post('/modificar/guardar/:id', async (req, res) => {
     const { nombre, precio_compra, precio_mayor, precio_unidad, categoria_id } = req.body;
-    await db.query(
-        'UPDATE productos SET nombre=?, precio_compra=?, precio_mayor=?, precio_unidad=?, categoria_id=? WHERE id=?',
-        [nombre, precio_compra, precio_mayor, precio_unidad, categoria_id, req.params.id]
-    );
+    await db.query('UPDATE productos SET nombre=?, precio_compra=?, precio_mayor=?, precio_unidad=?, categoria_id=? WHERE id=?',
+    [nombre, precio_compra, precio_mayor, precio_unidad, categoria_id, req.params.id]);
     res.redirect('/modificar');
 });
 
-// --- 5. ELIMINAR (CON FILTROS) ---
+// --- 5. ELIMINAR ---
 app.get('/eliminar-menu', async (req, res) => {
     const token = req.cookies.jwt;
     if (!token) return res.redirect('/login');
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-
     const [productos] = await db.query('SELECT * FROM productos ORDER BY nombre ASC');
     const [categorias] = await db.query('SELECT * FROM categorias ORDER BY nombre ASC');
-    
     res.render('eliminar', { usuario: decoded.user, productos, categorias });
 });
 
 app.get('/eliminar/:id', async (req, res) => {
-    const origen = req.query.origen; // Saber si venimos de "duplicados"
-    
+    const origen = req.query.origen;
     await db.query('DELETE FROM productos WHERE id = ?', [req.params.id]);
-    
     if (origen === 'duplicados') res.redirect('/duplicados');
     else res.redirect('/eliminar-menu');
 });
 
-// --- 6. LISTA ALMACÉN (LÓGICA NUEVA: ESTADOS) ---
+// --- 6. LISTAS (ACTIVOS vs HISTORIAL) ---
 app.get('/lista', async (req, res) => {
     const token = req.cookies.jwt;
     if (!token) return res.redirect('/login');
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     
-    // 1. Listas ACTIVAS (estado = 1). Se quedan aquí siempre.
+    // Activas (Estado 1)
     const [listasActivas] = await db.query('SELECT * FROM listas WHERE estado = 1 ORDER BY id DESC');
-    
-    // 2. Listas ARCHIVADAS (estado = 0). Historial.
+    // Historial (Estado 0)
     const [listasHistorial] = await db.query('SELECT * FROM listas WHERE estado = 0 ORDER BY id DESC LIMIT 10');
-
-    // 3. Ítems de todas las listas
+    // Ítems
     const [items] = await db.query('SELECT * FROM items_lista');
 
-    // Función para meter los ítems dentro de su lista correspondiente
-    const armarListas = (listas) => {
-        return listas.map(lista => {
-            lista.items = items.filter(i => i.lista_id === lista.id);
-            return lista;
-        });
-    };
+    const armarListas = (listas) => listas.map(l => ({ ...l, items: items.filter(i => i.lista_id === l.id) }));
 
-    res.render('lista', { 
-        usuario: decoded.user, 
-        listasHoy: armarListas(listasActivas),
-        listasHistorial: armarListas(listasHistorial)
-    });
+    res.render('lista', { usuario: decoded.user, listasHoy: armarListas(listasActivas), listasHistorial: armarListas(listasHistorial) });
 });
 
-// API: Listas
+// APIs de Listas
 app.post('/api/listas/crear', async (req, res) => {
-    const { nombre_lista } = req.body;
-    // Crea lista con estado=1 (Activa) y fecha de hoy
-    if(nombre_lista) await db.query('INSERT INTO listas (nombre_lista, fecha, estado) VALUES (?, CURDATE(), 1)', [nombre_lista]);
+    if(req.body.nombre_lista) await db.query('INSERT INTO listas (nombre_lista, fecha, estado) VALUES (?, CURDATE(), 1)', [req.body.nombre_lista]);
     res.redirect('/lista');
 });
-
 app.get('/api/listas/archivar/:id', async (req, res) => {
     await db.query('UPDATE listas SET estado = 0 WHERE id = ?', [req.params.id]);
     res.redirect('/lista');
 });
-
 app.get('/api/listas/restaurar/:id', async (req, res) => {
     await db.query('UPDATE listas SET estado = 1 WHERE id = ?', [req.params.id]);
     res.redirect('/lista');
 });
-
 app.get('/api/listas/eliminar/:id', async (req, res) => {
     await db.query('DELETE FROM listas WHERE id = ?', [req.params.id]);
     res.redirect('/lista');
 });
-
-// API: Ítems
+// APIs de Ítems
 app.post('/api/items/agregar', async (req, res) => {
-    const { lista_id, texto } = req.body;
-    if(lista_id && texto) await db.query('INSERT INTO items_lista (lista_id, texto) VALUES (?, ?)', [lista_id, texto]);
+    if(req.body.texto) await db.query('INSERT INTO items_lista (lista_id, texto) VALUES (?, ?)', [req.body.lista_id, req.body.texto]);
     res.redirect('/lista');
 });
-
 app.post('/api/items/toggle/:id', async (req, res) => {
     await db.query('UPDATE items_lista SET completado = NOT completado WHERE id = ?', [req.params.id]);
     res.sendStatus(200);
 });
-
 app.get('/api/items/eliminar/:id', async (req, res) => {
     await db.query('DELETE FROM items_lista WHERE id = ?', [req.params.id]);
     res.redirect('/lista');
@@ -225,12 +248,12 @@ app.post('/login', async (req, res) => {
 
         const token = jwt.sign({ id: rows[0].id, user: rows[0].username }, process.env.JWT_SECRET, { expiresIn: '30d' });
 
-        // --- COOKIE BLINDADA PARA SAMSUNG/ANDROID ---
+        // --- COOKIE BLINDADA (Fix Samsung/Honor) ---
         res.cookie('jwt', token, { 
             httpOnly: true, 
             maxAge: 30 * 24 * 60 * 60 * 1000, // 30 días
-            secure: true,    // Obligatorio para HTTPS
-            sameSite: 'lax'  // Compatibilidad móvil mejorada
+            secure: true,    // Obligatorio para HTTPS en Render
+            sameSite: 'lax'  // Necesario para navegación móvil estable
         });
         
         res.redirect('/');
