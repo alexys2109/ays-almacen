@@ -9,10 +9,11 @@ const db = require('./src/config/db');
 dotenv.config();
 const app = express();
 
-app.use(compression());
+// --- OPTIMIZACIONES ---
+app.use(compression()); // Comprimir respuestas para velocidad
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
-app.use(express.static(path.join(__dirname, 'public'), { maxAge: '1d' }));
+app.use(express.static(path.join(__dirname, 'public'), { maxAge: '1d' })); // Cachear CSS/IMG
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 app.use(cookieParser());
@@ -21,64 +22,58 @@ app.use(cookieParser());
 //                 RUTAS
 // ==========================================
 
-// --- 1. INICIO (BUSCAR) ---
+// --- 1. INICIO (BUSCAR CON FILTROS) ---
 app.get('/', async (req, res) => {
     const token = req.cookies.jwt;
     if (!token) return res.redirect('/login');
     try {
         const decoded = jwt.verify(token, process.env.JWT_SECRET);
+        // Traemos productos Y categorías para los filtros
         const [productos] = await db.query('SELECT * FROM productos ORDER BY nombre ASC');
         const [categorias] = await db.query('SELECT * FROM categorias ORDER BY nombre ASC');
+        
         res.render('index', { titulo: 'Buscar Productos', usuario: decoded.user, productos, categorias });
     } catch (error) { res.clearCookie('jwt'); res.redirect('/login'); }
 });
 
-// --- 2. DUPLICADOS (CORREGIDO PARA TiDB CLOUD) ---
+// --- 2. DUPLICADOS (LÓGICA JAVASCRIPT PARA TiDB) ---
 app.get('/duplicados', async (req, res) => {
     const token = req.cookies.jwt;
     if (!token) return res.redirect('/login');
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
     try {
-        // 1. Traemos TODOS los productos no verificados (Sin usar SOUNDEX en SQL)
+        // 1. Traer productos no verificados
         const [productos] = await db.query('SELECT * FROM productos WHERE verificado = 0 ORDER BY nombre ASC');
 
-        // 2. Agrupamos por sonido usando JAVASCRIPT (No la base de datos)
+        // 2. Agrupar por sonido en JS
         const gruposTemp = {};
-        
         productos.forEach(prod => {
-            // Calculamos el código fonético aquí
             const codigo = soundexJS(prod.nombre);
-            
-            if (!gruposTemp[codigo]) {
-                gruposTemp[codigo] = [];
-            }
+            if (!gruposTemp[codigo]) gruposTemp[codigo] = [];
             gruposTemp[codigo].push(prod);
         });
 
-        // 3. Filtramos solo los que tienen más de 1 coincidencia
+        // 3. Filtrar solo los repetidos
         const gruposFinales = {};
         for (const [codigo, items] of Object.entries(gruposTemp)) {
-            if (items.length > 1) {
-                gruposFinales[codigo] = items;
-            }
+            if (items.length > 1) gruposFinales[codigo] = items;
         }
 
         res.render('duplicados', { usuario: decoded.user, grupos: gruposFinales });
-
     } catch (error) {
-        console.error("Error en duplicados:", error);
+        console.error(error);
         res.render('duplicados', { usuario: decoded.user, grupos: {} });
     }
 });
 
-// API: VALIDAR PRODUCTO
+// API Validar (No es duplicado)
 app.post('/api/verificar/:id', async (req, res) => {
     await db.query('UPDATE productos SET verificado = 1 WHERE id = ?', [req.params.id]);
     res.redirect('/duplicados');
 });
 
-// --- 3. AGREGAR ---
+// --- 3. AGREGAR (CON CATEGORÍA OPCIONAL) ---
 app.get('/agregar', async (req, res) => {
     const token = req.cookies.jwt;
     if (!token) return res.redirect('/login');
@@ -86,6 +81,7 @@ app.get('/agregar', async (req, res) => {
     const [categorias] = await db.query('SELECT * FROM categorias ORDER BY nombre ASC');
     res.render('agregar', { usuario: decoded.user, categorias, exito: req.query.exito });
 });
+
 app.post('/agregar', async (req, res) => {
     let { nombre, precio_compra, precio_mayor, precio_unidad, categoria_id } = req.body;
     if (categoria_id === "") categoria_id = null;
@@ -94,7 +90,7 @@ app.post('/agregar', async (req, res) => {
     res.redirect('/agregar?exito=true');
 });
 
-// --- 4. MODIFICAR ---
+// --- 4. MODIFICAR (CON FILTROS) ---
 app.get('/modificar', async (req, res) => {
     const token = req.cookies.jwt;
     if (!token) return res.redirect('/login');
@@ -103,6 +99,7 @@ app.get('/modificar', async (req, res) => {
     const [categorias] = await db.query('SELECT * FROM categorias ORDER BY nombre ASC');
     res.render('modificar', { usuario: decoded.user, productos, categorias });
 });
+
 app.post('/modificar/guardar/:id', async (req, res) => {
     const { nombre, precio_compra, precio_mayor, precio_unidad, categoria_id } = req.body;
     await db.query('UPDATE productos SET nombre=?, precio_compra=?, precio_mayor=?, precio_unidad=?, categoria_id=? WHERE id=?',
@@ -110,7 +107,7 @@ app.post('/modificar/guardar/:id', async (req, res) => {
     res.redirect('/modificar');
 });
 
-// --- 5. ELIMINAR ---
+// --- 5. ELIMINAR (CON FILTROS) ---
 app.get('/eliminar-menu', async (req, res) => {
     const token = req.cookies.jwt;
     if (!token) return res.redirect('/login');
@@ -119,6 +116,7 @@ app.get('/eliminar-menu', async (req, res) => {
     const [categorias] = await db.query('SELECT * FROM categorias ORDER BY nombre ASC');
     res.render('eliminar', { usuario: decoded.user, productos, categorias });
 });
+
 app.get('/eliminar/:id', async (req, res) => {
     const origen = req.query.origen;
     await db.query('DELETE FROM productos WHERE id = ?', [req.params.id]);
@@ -126,14 +124,17 @@ app.get('/eliminar/:id', async (req, res) => {
     else res.redirect('/eliminar-menu');
 });
 
-// --- 6. LISTA ---
+// --- 6. LISTA ALMACÉN (MULTI-LISTA) ---
 app.get('/lista', async (req, res) => {
     const token = req.cookies.jwt;
     if (!token) return res.redirect('/login');
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     
+    // Listas activas hoy
     const [listasHoy] = await db.query('SELECT * FROM listas WHERE fecha = CURDATE() ORDER BY id DESC');
+    // Historial (últimos 10 días)
     const [listasHistorial] = await db.query('SELECT * FROM listas WHERE fecha < CURDATE() ORDER BY fecha DESC LIMIT 10');
+    // Ítems
     const [items] = await db.query('SELECT * FROM items_lista');
 
     const armarListas = (listas) => {
@@ -173,18 +174,41 @@ app.get('/api/listas/eliminar/:id', async (req, res) => {
     res.redirect('/lista');
 });
 
-// --- LOGIN ---
+// ==========================================
+//           LOGIN Y SEGURIDAD
+// ==========================================
+
 app.get('/login', (req, res) => { if(req.cookies.jwt) return res.redirect('/'); res.render('login'); });
+
 app.post('/login', async (req, res) => {
     const { username, password } = req.body;
-    const [rows] = await db.query('SELECT * FROM usuarios WHERE username = ?', [username]);
-    if (rows.length === 0 || password !== rows[0].password) return res.render('login', { error: 'Datos incorrectos' });
-    const token = jwt.sign({ id: rows[0].id, user: rows[0].username }, process.env.JWT_SECRET, { expiresIn: '30d' });
-    res.cookie('jwt', token, { httpOnly: true, maxAge: 30 * 24 * 3600000 });
-    res.redirect('/');
-});
-app.get('/logout', (req, res) => { res.clearCookie('jwt'); res.redirect('/login'); });
+    try {
+        const [rows] = await db.query('SELECT * FROM usuarios WHERE username = ?', [username]);
+        if (rows.length === 0 || password !== rows[0].password) return res.render('login', { error: 'Datos incorrectos' });
 
+        const token = jwt.sign({ id: rows[0].id, user: rows[0].username }, process.env.JWT_SECRET, { expiresIn: '30d' });
+
+        // --- COOKIE BLINDADA (SOLUCIÓN SAMSUNG) ---
+        res.cookie('jwt', token, { 
+            httpOnly: true, 
+            maxAge: 30 * 24 * 60 * 60 * 1000, // 30 días
+            secure: true,    // Obligatorio para HTTPS en Render
+            sameSite: 'lax'  // Mejor compatibilidad móvil
+        });
+        
+        res.redirect('/');
+    } catch (error) {
+        console.error(error);
+        res.render('login', { error: 'Error de servidor' });
+    }
+});
+
+app.get('/logout', (req, res) => { 
+    res.clearCookie('jwt'); 
+    res.redirect('/login'); 
+});
+
+// Iniciar Servidor
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => { console.log(`🚀 Servidor listo en http://localhost:${PORT}`); });
 
@@ -215,3 +239,4 @@ function soundexJS(s) {
         .join('');
     return (r + '000').slice(0, 4).toUpperCase();
 }
+
