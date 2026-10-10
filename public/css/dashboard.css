@@ -38,9 +38,13 @@
     --f-rojo: #e63946;
 
     /* Color de la sección actual (se cambia con body[data-sec]) */
-    --sec: #1f3d6b;
+    --sec: #2c5a94;       /* color principal de la sección (chips activos) */
+    --sec-ink: #1b3e6b;   /* texto del título de cada producto */
+    --sec-band: #d9e3f1;  /* franja con el nombre del producto */
+    --sec-edge: #b9c5d6;  /* bordes de cada producto */
+    --sec-zebra: #eff3f9; /* fila alterna en escritorio */
+    --sec-hover: #e4ebf6; /* fila bajo el mouse */
     --sec-soft: #eef2f8;
-    --sec-ink: #1c2430;
 
     /* Alias para compatibilidad */
     --primary: var(--navy);
@@ -64,6 +68,14 @@
     --bs-link-color: #1f3d6b;
 }
 
+
+/* Un color distinto para cada sección: se usa solo en los productos y las tablas */
+body[data-sec="buscar"]     { --sec: #2c5a94; --sec-ink: #1b3e6b; --sec-band: #d9e3f1; --sec-edge: #b9c5d6; --sec-zebra: #eff3f9; --sec-hover: #e4ebf6; }
+body[data-sec="modificar"]  { --sec: #b7791f; --sec-ink: #6e4608; --sec-band: #f6e6c3; --sec-edge: #dfc88f; --sec-zebra: #fcf6e8; --sec-hover: #f8ecd0; }
+body[data-sec="agregar"]    { --sec: #2f7a5a; --sec-ink: #1d5640; --sec-band: #d6ecdf; --sec-edge: #a9cdb8; --sec-zebra: #f0f8f3; --sec-hover: #e1f1e8; }
+body[data-sec="duplicados"] { --sec: #6b5ca5; --sec-ink: #473b7a; --sec-band: #e2dcf3; --sec-edge: #c0b6e0; --sec-zebra: #f5f2fb; --sec-hover: #ebe6f7; }
+body[data-sec="eliminar"]   { --sec: #b2423a; --sec-ink: #85302a; --sec-band: #f5d9d6; --sec-edge: #e0b0ab; --sec-zebra: #fcf1f0; --sec-hover: #f8e4e2; }
+body[data-sec="lista"]      { --sec: #23808a; --sec-ink: #155961; --sec-band: #cfe9ec; --sec-edge: #a2cbd0; --sec-zebra: #eff8f9; --sec-hover: #def0f2; }
 
 * { box-sizing: border-box; }
 html { -webkit-text-size-adjust: 100%; }
@@ -275,29 +287,29 @@ hr { border-color: var(--border); opacity: 1; }
 .card .table-responsive { background: var(--surface); }
 
 .table thead th {
-    background: #f1f4f9;
-    color: var(--text-muted);
+    background: var(--sec-band);
+    color: var(--sec-ink);
     font-weight: 700;
     text-transform: uppercase;
     font-size: 0.72rem;
     letter-spacing: 0.06em;
     padding: 13px 16px;
     white-space: nowrap;
-    border-bottom: 1px solid var(--border);
+    border-bottom: 2px solid var(--sec-edge);
 }
 
 .table tbody td {
     padding: 13px 16px;
     vertical-align: middle;
-    border-bottom: 1px solid #dde3ec;
+    border-bottom: 1px solid var(--sec-band);
     font-size: 0.95rem;
     font-variant-numeric: tabular-nums;
     background: transparent;
 }
 
-.table tbody tr:nth-child(even) td { background: #eff3f9; }
+.table tbody tr:nth-child(even) td { background: var(--sec-zebra); }
 .table tbody tr:last-child td { border-bottom: 0; }
-.table tbody tr:hover td { background: #e4ebf6; }
+.table tbody tr:hover td { background: var(--sec-hover); }
 
 .table td[data-label="Nombre"] { min-width: 240px; font-weight: 600; color: var(--text); }
 
@@ -371,9 +383,9 @@ textarea.input-nombre:focus { border-color: var(--sec); outline: none; box-shado
     cursor: pointer; transition: background 0.15s, border-color 0.15s; line-height: 1.2;
 }
 .chip:hover { background: #f1f4f9; border-color: #aeb9c9; }
-.chip.activo { background: var(--navy); border-color: var(--navy); color: #fff; font-weight: 600; }
+.chip.activo { background: var(--sec); border-color: var(--sec); color: #fff; font-weight: 600; }
 .chip .n { font-variant-numeric: tabular-nums; color: var(--text-faint); font-weight: 600; background: #eef2f7; border-radius: 999px; padding: 0 7px; }
-.chip.activo .n { color: var(--navy); background: #fff; }
+.chip.activo .n { color: var(--sec-ink); background: #fff; }
 .chip .dot-frescura { width: 11px; height: 11px; box-shadow: none; }
 
 .fila-guardada td { animation: parpadeoVerde 1.3s ease; }
@@ -393,7 +405,7 @@ textarea.input-nombre:focus { border-color: var(--sec); outline: none; box-shado
    ========================================================= */
 .item-lista { border-bottom: 1px solid var(--border-soft); padding: 12px 5px; }
 .item-texto { font-size: 1rem; line-height: 1.4; word-break: break-word; display: block; padding-right: 10px; }
-.card-lista { border-top: 3px solid var(--navy); }
+.card-lista { border-top: 3px solid var(--sec); }
 
 /* =========================================================
    RESPONSIVE: tablet y celular
@@ -456,7 +468,7 @@ textarea.input-nombre:focus { border-color: var(--sec); outline: none; box-shado
         display: flex;
         flex-direction: column;
         background: var(--surface);
-        border: 1px solid #b9c5d6;
+        border: 1px solid var(--sec-edge);
         border-radius: var(--radius);
         box-shadow: 0 3px 10px rgba(16, 24, 40, 0.12);
         overflow: hidden;
@@ -472,7 +484,7 @@ textarea.input-nombre:focus { border-color: var(--sec); outline: none; box-shado
         padding: 10px 16px;
         min-height: 48px;
         width: 100%;
-        border-bottom: 1px solid #e3e8f0;
+        border-bottom: 1px solid var(--sec-band);
     }
 
     .table tbody td::before {
@@ -498,9 +510,9 @@ textarea.input-nombre:focus { border-color: var(--sec); outline: none; box-shado
         padding: 14px 16px 12px;
         font-size: 1.04rem;
         line-height: 1.35;
-        background: #d9e3f1 !important;
-        color: var(--navy-dark);
-        border-bottom: 1px solid #b9c5d6;
+        background: var(--sec-band) !important;
+        color: var(--sec-ink);
+        border-bottom: 1px solid var(--sec-edge);
     }
     .table tbody td[data-label="Nombre"]::before { display: none; }
     .table tbody td[data-label="Nombre"] textarea.input-nombre { min-width: 0; text-align: left; }
@@ -509,9 +521,9 @@ textarea.input-nombre:focus { border-color: var(--sec); outline: none; box-shado
     .table tbody td[data-label="Acciones"],
     .table tbody td[data-label="Eliminar"] {
         justify-content: center;
-        background: #eef2f8 !important;
+        background: var(--sec-zebra) !important;
         border-bottom: 0;
-        border-top: 1px solid #d3dbe7;
+        border-top: 1px solid var(--sec-edge);
         padding: 14px 16px;
     }
     .table tbody td[data-label="Guardar"]::before,
