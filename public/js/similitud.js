@@ -171,6 +171,26 @@
         return A;
     }
 
+    // Un nombre es "casi el mismo" que otro cuando todas sus palabras clave (mínimo 2) están en el otro
+    // (aunque sea con un error de escritura) y el otro solo agrega 1 o 2 palabras. Ej: "saplio mosca x12" ~ "sapolio spray mosca x12".
+    function esSubconjunto(A, B) {
+        const chico = A._w.length <= B._w.length ? A : B;
+        const grande = chico === A ? B : A;
+        const ws = chico._w, wl = grande._w;
+        if (ws === chico || wl === grande) return false;          // alguno no tiene palabras clave
+        if (ws.length < 2 || wl.length - ws.length > 2) return false;
+        if (chico._n && grande._n && chico._n !== grande._n) return false;   // tamaños distintos = productos distintos
+        for (let i = 0; i < ws.length; i++) {
+            let mejor = 0;
+            for (let j = 0; j < wl.length; j++) {
+                const v = simPalabra(ws[i], wl[j], false);
+                if (v > mejor) mejor = v;
+            }
+            if (mejor < 0.75) return false;
+        }
+        return true;
+    }
+
     function similitud(A, B) {
         if (!A.length || !B.length) return 0;
         derivados(A); derivados(B);
@@ -181,6 +201,7 @@
         const nA = A._n, nB = B._n;
         if (nA && nB && nA !== nB) base *= 0.6;      // 45g vs 90g: probablemente son productos distintos
         else if ((nA && !nB) || (!nA && nB)) base *= 0.92;
+        if (base < 0.82 && esSubconjunto(A, B)) base = 0.82;
         return base;
     }
 
