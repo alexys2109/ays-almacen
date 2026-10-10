@@ -11,9 +11,8 @@
     <link rel="stylesheet" href="https://unpkg.com/nprogress@0.2.0/nprogress.css" />
     <link rel="stylesheet" href="/css/dashboard.css">
     <style>
-        .tachado { text-decoration: line-through; color: #aaa; }
-        .card-lista { border-top: 4px solid var(--primary); transition: transform 0.2s; }
-        .badge-fecha { font-size: 0.75rem; background: #eee; color: #555; padding: 4px 8px; border-radius: 6px; }
+        .tachado { text-decoration: line-through; color: #98a2b3; }
+        .badge-fecha { font-size: 0.75rem; background: #f2f4f7; color: #667085; padding: 4px 9px; border-radius: 6px; }
     </style>
 </head>
 <body>
@@ -36,7 +35,7 @@
         
         <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-3">
             <div class="text-center text-md-start w-100 w-md-auto">
-                <h2 class="fw-bold text-dark m-0">Mis Listas Activas</h2>
+                <h2 class="m-0" style="font-size:1.55rem;font-weight:700;letter-spacing:-.015em">Mis listas activas</h2>
                 <p class="text-muted mb-0 small">Estas listas permanecerán aquí hasta que las archives.</p>
             </div>
             
@@ -137,7 +136,7 @@
         async function crearLista() {
             const { value: nombre } = await Swal.fire({
                 title: 'Nueva Lista', input: 'text', inputLabel: 'Nombre (Ej: Walter)', inputPlaceholder: 'Escribe aquí...',
-                showCancelButton: true, confirmButtonText: 'Crear', confirmButtonColor: '#4361ee'
+                showCancelButton: true, confirmButtonText: 'Crear', confirmButtonColor: '#1f3d6b'
             });
             if (nombre) {
                 const form = document.createElement('form');
@@ -157,5 +156,6 @@
             fetch('/api/items/toggle/' + id, { method: 'POST' }).catch(console.error);
         }
     </script>
+    <script src="/js/ui.js?v=<%= ver %>"></script>
 </body>
 </html>

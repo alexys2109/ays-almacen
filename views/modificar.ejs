@@ -4,13 +4,13 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Modificar Productos</title>
-    
+
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://unpkg.com/nprogress@0.2.0/nprogress.js"></script>
     <link rel="stylesheet" href="https://unpkg.com/nprogress@0.2.0/nprogress.css" />
-    <link rel="stylesheet" href="/css/dashboard.css">
-    
+    <link rel="stylesheet" href="/css/dashboard.css?v=<%= ver %>">
+
     <style>
         #nprogress .bar { background: var(--primary) !important; height: 4px !important; }
         body.loading { cursor: wait; }
@@ -19,6 +19,7 @@
         #sentinel { height: 20px; width: 100%; margin-top: 20px; }
         .loader-scroll { text-align: center; color: var(--text-muted); display: none; padding: 20px; }
         .loader-scroll.active { display: block; }
+        .btn-igual { white-space: nowrap; }
     </style>
 </head>
 <body>
@@ -38,32 +39,57 @@
     <button class="menu-toggle-btn" onclick="document.querySelector('.sidebar').classList.toggle('active')"><i class="fa-solid fa-bars"></i></button>
 
     <div class="main-content">
-        <h2 class="fw-bold text-warning mb-4">Modificar Inventario</h2>
-        
-        <div class="card border-0 shadow-sm mb-4">
+        <h2>Modificar precios</h2>
+
+        <div id="avisoSeleccion" class="alert alert-info d-none justify-content-between align-items-center">
+            <span><i class="fa-solid fa-hand-pointer me-2"></i> Mostrando el producto que elegiste.</span>
+            <a href="/modificar" class="btn btn-sm btn-outline-primary">Ver todos</a>
+        </div>
+
+        <div class="card border-0 shadow-sm mb-3">
             <div class="card-body py-3">
                 <div class="row g-2 align-items-center">
-                    
-                    <div class="col-12 col-md-6">
+
+                    <div class="col-12 col-md-5">
                         <div class="input-group">
                             <span class="input-group-text bg-white border-end-0"><i class="fa-solid fa-magnifying-glass text-muted"></i></span>
-                            <input type="text" id="inputBusqueda" class="form-control border-start-0" placeholder="Escribe para buscar..." autocomplete="off">
+                            <input type="text" id="inputBusqueda" class="form-control border-start-0" placeholder="Buscar producto..." autocomplete="off">
                         </div>
                     </div>
 
-                    <div class="col-8 col-md-4">
+                    <div class="col-12 col-sm-6 col-md-3">
                         <select id="selectCategoria" class="form-select">
-                            <option value="">-- Todas --</option>
+                            <option value="">Todas las categorías</option>
                             <% categorias.forEach(c => { %>
                                 <option value="<%= c.id %>"><%= c.nombre %></option>
                             <% }) %>
                         </select>
                     </div>
 
-                    <div class="col-4 col-md-2">
+                    <div class="col-12 col-sm-6 col-md-3">
+                        <select id="selectOrden" class="form-select">
+                            <option value="nombre">A - Z</option>
+                            <option value="viejos">Más desactualizados primero</option>
+                            <option value="nuevos">Cambiados recientemente</option>
+                        </select>
+                    </div>
+
+                    <div class="col-12 col-md-1">
                         <button id="btnReset" class="btn btn-outline-secondary w-100" title="Limpiar"><i class="fa-solid fa-rotate-left"></i></button>
                     </div>
                 </div>
+
+                <div class="chips-filtro mt-3" id="chips"></div>
+            </div>
+        </div>
+
+        <div class="d-flex justify-content-between align-items-center mb-2 px-1 flex-wrap gap-2">
+            <small class="text-muted" id="resumen"></small>
+            <div class="leyenda-frescura">
+                <span><i class="dot-frescura dot-verde"></i> hasta 7 días</span>
+                <span><i class="dot-frescura dot-amarillo"></i> hasta 30</span>
+                <span><i class="dot-frescura dot-naranja"></i> hasta 60</span>
+                <span><i class="dot-frescura dot-rojo"></i> más de 60</span>
             </div>
         </div>
 
@@ -73,7 +99,7 @@
                     <table class="table align-middle mb-0 tabla-edicion">
                         <thead class="table-light text-center">
                             <tr>
-                                <th>Nombre</th> <th>Compra</th> <th>Mayor</th> <th>Unidad</th> <th>Categoría</th> <th>Acción</th>
+                                <th>Nombre</th> <th class="num">Compra</th> <th class="num">Mayor</th> <th class="num">Unidad</th> <th>Categoría</th> <th>Precio al día</th> <th>Acción</th>
                             </tr>
                         </thead>
                         <tbody id="tablaBody">
@@ -84,151 +110,269 @@
                 <div id="loader" class="loader-scroll">
                     <i class="fa-solid fa-spinner fa-spin fa-lg"></i> Cargando...
                 </div>
-                
+
                 <div id="sentinel"></div>
             </div>
         </div>
     </div>
 
+    <script src="/js/similitud.js?v=<%= ver %>"></script>
+    <script src="/js/frescura.js?v=<%= ver %>"></script>
     <script>
-        // Guardamos las categorías para reconstruir el select dinámicamente
         const listaCategorias = <%- JSON.stringify(categorias) %>;
-    </script>
+        const ID_SELECCIONADO = <%- JSON.stringify(String(idSel || '')) %>;
 
-    <script>
-        let pagina = 1;
-        let busqueda = '';
-        let categoria = '';
-        let cargando = false;
-        let finDeDatos = false;
-        let timeoutBusqueda; // Para el "freno de mano"
+        let PRODUCTOS = [];
+        let indice = [];
+        let filtrados = [];
+        let renderizados = 0;
+        const LOTE = 20;
+        let filtroFrescura = '';
+        let temporizador;
 
         const inputBusqueda = document.getElementById('inputBusqueda');
         const selectCategoria = document.getElementById('selectCategoria');
+        const selectOrden = document.getElementById('selectOrden');
         const btnReset = document.getElementById('btnReset');
         const tablaBody = document.getElementById('tablaBody');
         const loader = document.getElementById('loader');
+        const chips = document.getElementById('chips');
+        const resumen = document.getElementById('resumen');
 
-        // --- FUNCIÓN PRINCIPAL: TRAER DATOS DEL SERVIDOR ---
-        async function fetchProductos(reset = false) {
-            if (cargando) return;
-            if (reset) {
-                pagina = 1;
-                finDeDatos = false;
-                tablaBody.innerHTML = ''; // Limpiamos tabla
-                loader.innerHTML = '<i class="fa-solid fa-spinner fa-spin fa-lg"></i> Buscando...';
+        const esc = Frescura.esc;
+        const claseDe = p => Frescura.rango(p.seg_precio).clase;
+
+        function prepararProducto(p) {
+            p.seg_precio = Frescura.segundosPrecio(p);
+            return p;
+        }
+
+        function detalleFechas(p) {
+            const c = (p.seg_cambio !== null && p.seg_cambio !== undefined) ? Math.max(0, Number(p.seg_cambio)) : null;
+            const f = (p.seg_confirmado !== null && p.seg_confirmado !== undefined) ? Math.max(0, Number(p.seg_confirmado)) : null;
+            return '<div class="detalle-fechas">Precio cambió: ' + (c === null ? 'sin registro' : Frescura.fecha(c)) +
+                '<br>Confirmado: ' + (f === null ? 'nunca' : Frescura.fecha(f)) + '</div>';
+        }
+
+        function celdaFrescura(p) {
+            return '<div class="text-end text-lg-start">' + Frescura.insignia(p) + detalleFechas(p) + '</div>';
+        }
+
+        // --- CARGA ÚNICA DE TODOS LOS PRODUCTOS ---
+        async function cargarTodo() {
+            loader.innerHTML = '<i class="fa-solid fa-spinner fa-spin fa-lg"></i> Cargando productos...';
+            loader.classList.add('active');
+            try {
+                const res = await fetch('/api/productos/todos', { headers: { Accept: 'application/json' } });
+                if (res.status === 401) { location.href = '/login'; return; }
+                PRODUCTOS = (await res.json()).map(prepararProducto);
+                indice = Similitud.indexar(PRODUCTOS);
+                loader.classList.remove('active');
+                aplicarFiltros();
+            } catch (e) {
+                console.error(e);
+                loader.innerHTML = 'Error de conexión. <a href="/modificar">Reintentar</a>';
+            }
+        }
+
+        function dibujarChips(base) {
+            const cuenta = { verde: 0, amarillo: 0, naranja: 0, rojo: 0 };
+            base.forEach(p => cuenta[claseDe(p)]++);
+            const dot = c => `<i class="dot-frescura dot-${c}"></i>`;
+            const def = [
+                ['', 'Todos', base.length, ''],
+                ['verde', 'Cambiados esta semana', cuenta.verde, dot('verde')],
+                ['amarillo', 'Hasta 30 días', cuenta.amarillo, dot('amarillo')],
+                ['naranja', '31 a 60 días', cuenta.naranja, dot('naranja')],
+                ['rojo', 'Por revisar (+60 días)', cuenta.rojo, dot('rojo')]
+            ];
+            chips.innerHTML = def.map(([val, txt, n, ico]) =>
+                `<button type="button" class="chip${filtroFrescura === val ? ' activo' : ''}" data-f="${val}">${ico}${txt}<span class="n">${n}</span></button>`
+            ).join('');
+        }
+
+        function aplicarFiltros() {
+            const texto = inputBusqueda.value;
+            const catId = selectCategoria.value;
+
+            let lista;
+            if (ID_SELECCIONADO) {
+                lista = PRODUCTOS.filter(p => String(p.id) === ID_SELECCIONADO);
+                document.getElementById('avisoSeleccion').classList.replace('d-none', 'd-flex');
+            } else {
+                lista = Similitud.buscar(texto, indice).map(r => r.item);
+                if (catId) lista = lista.filter(p => String(p.categoria_id) === catId);
+                dibujarChips(lista);
+                if (filtroFrescura) lista = lista.filter(p => claseDe(p) === filtroFrescura);
+                const orden = selectOrden.value;
+                if (orden === 'viejos') lista = lista.slice().sort((a, b) => (b.seg_precio ?? 1e12) - (a.seg_precio ?? 1e12));
+                else if (orden === 'nuevos') lista = lista.slice().sort((a, b) => (a.seg_precio ?? 1e12) - (b.seg_precio ?? 1e12));
+                else if (!texto.trim()) lista = lista.slice().sort((a, b) => a.nombre.localeCompare(b.nombre, 'es'));
+            }
+
+            filtrados = lista;
+            renderizados = 0;
+            tablaBody.innerHTML = '';
+            resumen.textContent = lista.length + (lista.length === 1 ? ' producto' : ' productos');
+            if (!lista.length) {
+                tablaBody.innerHTML = '<tr><td colspan="7" class="text-center py-5 text-muted" style="display:table-cell">No se encontraron productos.</td></tr>';
+                return;
+            }
+            dibujarLote();
+        }
+
+        // --- DIBUJAR HTML (de a 20 para que el celular no se trabe) ---
+        function filaHTML(p) {
+            const opcionesCat = listaCategorias.map(c =>
+                `<option value="${c.id}" ${p.categoria_id == c.id ? 'selected' : ''}>${esc(c.nombre)}</option>`
+            ).join('');
+            return `
+                <tr class="fila-producto" id="fila-${p.id}">
+                    <form id="form-${p.id}" action="/modificar/guardar/${p.id}" method="POST" data-id="${p.id}"></form>
+                    <td data-label="Nombre"><textarea name="nombre" class="form-control input-nombre" form="form-${p.id}" required rows="1">${esc(p.nombre)}</textarea></td>
+                    <td data-label="Compra"><input type="number" step="0.01" name="precio_compra" class="form-control precio-compra" value="${p.precio_compra ?? ''}" form="form-${p.id}"></td>
+                    <td data-label="Mayor"><input type="number" step="0.01" name="precio_mayor" class="form-control precio-mayor" value="${p.precio_mayor ?? ''}" form="form-${p.id}"></td>
+                    <td data-label="Unidad"><input type="number" step="0.01" name="precio_unidad" class="form-control precio-unidad" value="${p.precio_unidad ?? ''}" form="form-${p.id}"></td>
+                    <td data-label="Categoría">
+                        <select name="categoria_id" class="form-select" form="form-${p.id}">
+                            <option value="">-- Sin Categ. --</option>
+                            ${opcionesCat}
+                        </select>
+                    </td>
+                    <td data-label="Precio al día" class="celda-frescura">${celdaFrescura(p)}</td>
+                    <td data-label="Guardar">
+                        <div class="acciones-doble">
+                            <button type="submit" class="btn btn-primary btn-guardar" form="form-${p.id}"><i class="fa-solid fa-floppy-disk me-1"></i> Guardar</button>
+                            <button type="button" class="btn btn-outline-success btn-igual" data-id="${p.id}" title="Revisé este producto y el precio sigue siendo el mismo"><i class="fa-solid fa-check me-1"></i> Sigue igual</button>
+                        </div>
+                    </td>
+                </tr>`;
+        }
+
+        function dibujarLote() {
+            const lote = filtrados.slice(renderizados, renderizados + LOTE);
+            tablaBody.insertAdjacentHTML('beforeend', lote.map(filaHTML).join(''));
+            renderizados += lote.length;
+            if (renderizados >= filtrados.length && filtrados.length > LOTE) {
+                loader.innerHTML = '<span class="text-muted small">Fin de los resultados</span>';
                 loader.classList.add('active');
             } else {
-                if (finDeDatos) return;
-                pagina++;
-                loader.innerHTML = '<i class="fa-solid fa-spinner fa-spin fa-lg"></i> Cargando más...';
-                loader.classList.add('active');
+                loader.classList.remove('active');
             }
+        }
 
-            cargando = true;
+        // --- ACTUALIZAR UNA FILA TRAS GUARDAR/CONFIRMAR (sin recargar la página) ---
+        function actualizarFila(nuevo) {
+            const i = PRODUCTOS.findIndex(p => p.id === nuevo.id);
+            if (i === -1) return;
+            Object.assign(PRODUCTOS[i], prepararProducto(nuevo));
+            const fila = document.getElementById('fila-' + nuevo.id);
+            if (fila) {
+                fila.querySelector('.celda-frescura').innerHTML = celdaFrescura(PRODUCTOS[i]);
+                fila.classList.remove('fila-guardada');
+                void fila.offsetWidth;
+                fila.classList.add('fila-guardada');
+            }
+            if (!ID_SELECCIONADO) dibujarChips(Similitud.buscar(inputBusqueda.value, indice).map(r => r.item).filter(p => !selectCategoria.value || String(p.categoria_id) === selectCategoria.value));
+            indice = Similitud.indexar(PRODUCTOS);
+        }
 
+        function avisoBoton(btn, textoOk, claseOk) {
+            const original = btn.dataset.original || btn.innerHTML;
+            btn.dataset.original = original;
+            btn.innerHTML = textoOk;
+            setTimeout(() => { btn.innerHTML = original; btn.disabled = false; }, 1400);
+        }
+
+        // Atajos para cargar precios rápido: al entrar a un precio queda seleccionado, y Enter guarda y baja a la siguiente fila
+        let enterEn = null;
+        tablaBody.addEventListener('focusin', e => { if (e.target.type === 'number') setTimeout(() => e.target.select(), 0); });
+        tablaBody.addEventListener('keydown', e => {
+            if (e.key === 'Enter' && e.target.type === 'number') enterEn = e.target.getAttribute('form').replace('form-', '');
+        });
+
+        // Guardar con fetch: conserva el filtro y el lugar donde estabas
+        document.addEventListener('submit', async (e) => {
+            const form = e.target;
+            if (!form.dataset || !form.dataset.id) return;
+            e.preventDefault();
+            const id = form.dataset.id;
+            const fila = document.getElementById('fila-' + id);
+            const btn = fila.querySelector('.btn-guardar');
+            const datos = new URLSearchParams();
+            fila.querySelectorAll('[form="form-' + id + '"]').forEach(el => datos.append(el.name, el.value));
+            btn.disabled = true;
+            NProgress.start();
             try {
-                // LLAMADA MÁGICA A LA API
-                const url = `/api/productos?page=${pagina}&busqueda=${encodeURIComponent(busqueda)}&categoria=${categoria}`;
-                const res = await fetch(url);
-                const data = await res.json();
-
-                if (data.length === 0) {
-                    finDeDatos = true;
-                    if (reset) {
-                        tablaBody.innerHTML = '<tr><td colspan="6" class="text-center py-5 text-muted">No se encontraron productos.</td></tr>';
-                        loader.classList.remove('active');
-                    } else {
-                        loader.innerHTML = '<span class="text-muted small">Fin de los resultados</span>';
-                    }
-                } else {
-                    // DIBUJAR FILAS
-                    renderizarFilas(data);
-                    loader.classList.remove('active');
+                const res = await fetch(form.action, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded', Accept: 'application/json' },
+                    body: datos
+                });
+                if (res.status === 401) { location.href = '/login'; return; }
+                const r = await res.json();
+                if (!res.ok || !r.ok) throw new Error(r.error || 'Error');
+                actualizarFila(r.producto);
+                if (enterEn === id) {   // guardó con Enter: pasa a la siguiente fila para seguir tecleando precios
+                    const sig = fila.nextElementSibling && fila.nextElementSibling.querySelector('input[name=precio_compra]');
+                    if (sig) { sig.focus(); sig.scrollIntoView({ block: 'center', behavior: 'smooth' }); }
                 }
-            } catch (error) {
-                console.error(error);
-                loader.innerText = 'Error de conexión';
+                enterEn = null;
+                avisoBoton(btn, r.cambioPrecio ? '<i class="fa-solid fa-check me-1"></i> Precio guardado' : '<i class="fa-solid fa-check me-1"></i> Guardado');
+            } catch (err) {
+                console.error(err);
+                btn.disabled = false;
+                alert('No se pudo guardar. Revisa tu conexión e inténtalo de nuevo.');
             }
-            cargando = false;
-        }
-
-        // --- DIBUJAR HTML ---
-        function renderizarFilas(productos) {
-            let html = '';
-            productos.forEach(p => {
-                const opcionesCat = listaCategorias.map(c => 
-                    `<option value="${c.id}" ${p.categoria_id == c.id ? 'selected' : ''}>${c.nombre}</option>`
-                ).join('');
-
-                html += `
-                    <tr class="fila-producto">
-                        <form id="form-${p.id}" action="/modificar/guardar/${p.id}" method="POST"></form>
-                        <td data-label="Nombre"><textarea name="nombre" class="form-control input-nombre" form="form-${p.id}" required rows="1">${p.nombre}</textarea></td>
-                        <td data-label="P. Compra"><input type="number" step="0.01" name="precio_compra" class="form-control text-secondary" value="${p.precio_compra}" form="form-${p.id}"></td>
-                        <td data-label="P. Mayor"><input type="number" step="0.01" name="precio_mayor" class="form-control fw-bold text-primary" value="${p.precio_mayor}" form="form-${p.id}"></td>
-                        <td data-label="P. Unidad"><input type="number" step="0.01" name="precio_unidad" class="form-control fw-bold text-success" value="${p.precio_unidad}" form="form-${p.id}"></td>
-                        <td data-label="Categoría">
-                            <select name="categoria_id" class="form-select" form="form-${p.id}">
-                                <option value="">-- Sin Categ. --</option>
-                                ${opcionesCat}
-                            </select>
-                        </td>
-                        <td data-label="Guardar">
-                            <button type="submit" class="btn btn-warning w-100 shadow-sm" form="form-${p.id}"><i class="fa-solid fa-floppy-disk me-2"></i> Guardar</button>
-                        </td>
-                    </tr>
-                `;
-            });
-            tablaBody.insertAdjacentHTML('beforeend', html);
-        }
-
-        // --- EVENTOS INTELIGENTES ---
-
-        // 1. Escribir en el buscador (Con Freno de Mano / Debounce)
-        inputBusqueda.addEventListener('input', (e) => {
-            busqueda = e.target.value.trim();
-            clearTimeout(timeoutBusqueda); // Cancelamos búsqueda anterior
-            
-            // Esperamos 400ms a que termines de escribir
-            timeoutBusqueda = setTimeout(() => {
-                fetchProductos(true); // Buscar desde cero
-            }, 400);
+            NProgress.done();
         });
 
-        // 2. Cambiar Categoría
-        selectCategoria.addEventListener('change', (e) => {
-            categoria = e.target.value;
-            fetchProductos(true);
+        // "Sigue igual": confirma que el precio está vigente sin cambiar nada
+        document.addEventListener('click', async (e) => {
+            const btn = e.target.closest('.btn-igual');
+            if (!btn) return;
+            btn.disabled = true;
+            NProgress.start();
+            try {
+                const res = await fetch('/modificar/confirmar/' + btn.dataset.id, { method: 'POST', headers: { Accept: 'application/json' } });
+                if (res.status === 401) { location.href = '/login'; return; }
+                const r = await res.json();
+                if (!res.ok || !r.ok) throw new Error(r.error || 'Error');
+                actualizarFila(r.producto);
+                avisoBoton(btn, '<i class="fa-solid fa-check me-1"></i> Confirmado');
+            } catch (err) {
+                console.error(err);
+                btn.disabled = false;
+                alert('No se pudo confirmar. Inténtalo de nuevo.');
+            }
+            NProgress.done();
         });
 
-        // 3. Botón Limpiar
+        // --- EVENTOS ---
+        inputBusqueda.addEventListener('input', () => { clearTimeout(temporizador); temporizador = setTimeout(aplicarFiltros, 150); });
+        selectCategoria.addEventListener('change', aplicarFiltros);
+        selectOrden.addEventListener('change', aplicarFiltros);
+        chips.addEventListener('click', e => {
+            const b = e.target.closest('button[data-f]');
+            if (!b) return;
+            filtroFrescura = b.dataset.f;
+            aplicarFiltros();
+        });
         btnReset.addEventListener('click', () => {
-            inputBusqueda.value = '';
-            selectCategoria.value = '';
-            busqueda = '';
-            categoria = '';
-            fetchProductos(true);
+            if (ID_SELECCIONADO) { location.href = '/modificar'; return; }
+            inputBusqueda.value = ''; selectCategoria.value = ''; selectOrden.value = 'nombre'; filtroFrescura = '';
+            aplicarFiltros();
         });
 
-        // 4. Scroll Infinito (Observer)
+        // Scroll infinito (ahora sobre la lista ya filtrada en el navegador)
         const observer = new IntersectionObserver((entries) => {
-            if (entries[0].isIntersecting) {
-                fetchProductos(false); // Cargar MÁS (no resetear)
-            }
-        }, { rootMargin: '200px' }); // Cargar antes de llegar al final
+            if (entries[0].isIntersecting && renderizados < filtrados.length) dibujarLote();
+        }, { rootMargin: '300px' });
+        observer.observe(document.getElementById('sentinel'));
 
-        const sentinel = document.getElementById('sentinel');
-        if (sentinel) observer.observe(sentinel);
-
-        // 5. Carga Inicial
-        fetchProductos(true);
-
-        // Barra NProgress (Visual)
         NProgress.configure({ showSpinner: false });
-        document.addEventListener('submit', (e) => {
-            if(e.target.tagName === 'FORM') NProgress.start();
-        });
+        cargarTodo();
     </script>
+    <script src="/js/ui.js?v=<%= ver %>"></script>
 </body>
 </html>

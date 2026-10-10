@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Un momento...</title>
+    <noscript><meta http-equiv="refresh" content="0;url=<%= destino %>"></noscript>
+</head>
+<body>
+    <p style="font-family:sans-serif;text-align:center;margin-top:30vh;color:#666">Un momento...</p>
+    <script>
+        (function () {
+            try {
+                var cuenta = <%- JSON.stringify(cuenta).replace(/</g, '\u003c') %>;
+                if (cuenta) {
+                    var lista = [];
+                    try { lista = JSON.parse(localStorage.getItem('ays_cuentas') || '[]'); } catch (e) { lista = []; }
+                    if (!Array.isArray(lista)) lista = [];
+                    var i = lista.findIndex(function (c) { return c && c.user === cuenta.user; });
+                    if (i >= 0) lista[i] = cuenta; else lista.push(cuenta);
+                    localStorage.setItem('ays_cuentas', JSON.stringify(lista));
+                }
+            } catch (e) { /* almacenamiento bloqueado: se continúa igual */ }
+            location.replace(<%- JSON.stringify(destino) %>);
+        })();
+    </script>
+</body>
+</html>
