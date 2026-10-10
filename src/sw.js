@@ -35,6 +35,9 @@ self.addEventListener('activate', function (e) {
     e.waitUntil(
         caches.keys().then(function (claves) {
             return Promise.all(claves.filter(function (k) { return k !== C_ESTATICO && k !== C_PAGINAS; }).map(function (k) { return caches.delete(k); }));
+        }).then(function () {
+            // El servicio puede tardar en despertar; con esto la petición de la página sale en paralelo
+            return self.registration.navigationPreload ? self.registration.navigationPreload.enable() : null;
         }).then(function () { return self.clients.claim(); })
     );
 });
@@ -50,8 +53,9 @@ function conAvisoSinConexion(resp) {
 
 function esperar(ms) { return new Promise(function (r) { setTimeout(function () { r(null); }, ms); }); }
 
-function pantallaBuscar(req) {
-    const intento = fetch(req).then(function (resp) {
+function pantallaBuscar(e) {
+    const req = e.request;
+    const intento = Promise.resolve(e.preloadResponse).then(function (pre) { return pre || fetch(req); }).then(function (resp) {
         // solo se guarda si es la página real (no una redirección al login)
         const tipo = resp.headers.get('content-type') || '';
         if (resp.ok && !resp.redirected && /text\/html/.test(tipo)) {
@@ -79,30 +83,39 @@ self.addEventListener('fetch', function (e) {
     if (req.method !== 'GET') return;
     const url = new URL(req.url);
 
+    // Solo se tocan las peticiones de esta misma web (no extensiones del navegador ni otros sitios)
+    if (!/^https?:$/.test(url.protocol) || url.origin !== self.location.origin) return;
+
     // Páginas de la app
-    if (url.origin === self.location.origin && req.mode === 'navigate') {
-        if (url.pathname === '/') { e.respondWith(pantallaBuscar(req)); return; }
+    if (req.mode === 'navigate') {
+        if (url.pathname === '/') { e.respondWith(pantallaBuscar(e)); return; }
         // el resto de pantallas necesita internet: si no hay, se muestra el aviso
-        e.respondWith(fetch(req).catch(function () { return caches.match('/offline.html'); }));
+        e.respondWith(
+            Promise.resolve(e.preloadResponse).then(function (pre) { return pre || fetch(req); })
+                .catch(function () { return caches.match('/offline.html'); })
+        );
         return;
     }
 
     // Datos y acciones del servidor: nunca se guardan
-    if (url.origin === self.location.origin && (/^\/(api|login|logout|modificar|agregar|eliminar|duplicados|lista|salud|sw\.js)/.test(url.pathname))) return;
+    if (/^\/(api|login|logout|modificar|agregar|eliminar|duplicados|lista|salud|sw\.js)/.test(url.pathname)) return;
 
-    // Archivos de diseño (propios y de CDN): primero lo guardado, y se actualiza en segundo plano
     const destino = req.destination;
-    if (['style', 'script', 'font', 'image'].indexOf(destino) !== -1 || url.pathname === '/manifest.webmanifest') {
-        e.respondWith(
-            caches.open(C_ESTATICO).then(function (c) {
-                return c.match(req).then(function (guardado) {
-                    const red = fetch(req).then(function (resp) {
-                        if (resp && (resp.ok || resp.type === 'opaque')) { try { c.put(req, resp.clone()); } catch (err) { } }
-                        return resp;
-                    }).catch(function () { return guardado; });
-                    return guardado || red;
-                });
-            })
-        );
-    }
+    const esEstatico = ['style', 'script', 'font', 'image'].indexOf(destino) !== -1 || url.pathname === '/manifest.webmanifest';
+    if (!esEstatico) return;
+
+    // Archivos con versión (?v=) o librerías propias: no cambian, así que se toman de lo guardado sin volver a pedirlos
+    const fijo = url.search.indexOf('v=') !== -1 || url.pathname.indexOf('/vendor/') === 0;
+    e.respondWith(
+        caches.open(C_ESTATICO).then(function (c) {
+            return c.match(req).then(function (guardado) {
+                if (guardado && fijo) return guardado;
+                const red = fetch(req).then(function (resp) {
+                    if (resp && resp.ok) { c.put(req, resp.clone()).catch(function () { }); }
+                    return resp;
+                }).catch(function () { return guardado; });
+                return guardado || red;   // iconos y logo: lo guardado al instante y se refresca por detrás
+            });
+        })
+    );
 });
