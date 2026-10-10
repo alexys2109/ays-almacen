@@ -132,8 +132,19 @@ function auth(req, res, next) {
 }
 
 function precioONull(v) {
-    return (v === undefined || v === null || String(v).trim() === '') ? null : Number(v);
+    if (v === undefined || v === null || String(v).trim() === '') return null;
+    const n = Number(v);
+    return Number.isFinite(n) ? n : null;
 }
+
+// Lee un precio escrito por el usuario. Acepta coma decimal. { valor, valido }
+function leerPrecio(v) {
+    if (v === undefined || v === null || String(v).trim() === '') return { valor: null, valido: true };
+    const n = Number(String(v).trim().replace(',', '.'));
+    if (!Number.isFinite(n) || n < 0 || n > 99999999) return { valor: null, valido: false };
+    return { valor: Math.round(n * 100) / 100, valido: true };
+}
+const MAX_NOMBRE = 100;
 function precioCambio(a, b) {
     if (a === null || b === null) return a !== b;
     return Math.abs(Number(a) - Number(b)) > 0.0049;
@@ -218,14 +229,18 @@ app.get('/agregar', auth, async (req, res) => {
         db.query('SELECT * FROM categorias ORDER BY nombre ASC').then(r => r[0]),
         listarProductos()
     ]);
-    res.render('agregar', { usuario: req.usuario, categorias, exito: req.query.exito, productos, token: nuevoTokenAgregar() });
+    res.render('agregar', { usuario: req.usuario, categorias, exito: req.query.exito, error: req.query.error || '', productos, token: nuevoTokenAgregar() });
 });
 
 app.post('/agregar', auth, async (req, res) => {
-    let { precio_compra, precio_mayor, precio_unidad, categoria_id, token } = req.body;
+    let { categoria_id, token } = req.body;
     const nombre = limpiarNombre(req.body.nombre);
-    if (categoria_id === "") categoria_id = null;
+    if (!categoria_id) categoria_id = null;
     if (!nombre) return res.redirect('/agregar');
+    // Datos inválidos: se vuelve al formulario con un aviso (sin gastar el token del formulario)
+    const compra = leerPrecio(req.body.precio_compra), mayor = leerPrecio(req.body.precio_mayor), unidad = leerPrecio(req.body.precio_unidad);
+    if (nombre.length > MAX_NOMBRE) return res.redirect('/agregar?error=nombre');
+    if (!compra.valido || !mayor.valido || !unidad.valido) return res.redirect('/agregar?error=precio');
 
     // Anti-duplicado por doble envío: el formulario solo vale una vez...
     if (!token || !tokensAgregar.delete(token)) return res.redirect('/agregar?exito=true');
@@ -235,7 +250,7 @@ app.post('/agregar', auth, async (req, res) => {
     if (recientes.length) return res.redirect('/agregar?exito=true');
 
     await db.query('INSERT INTO productos (nombre, precio_compra, precio_mayor, precio_unidad, categoria_id, precio_cambiado) VALUES (?,?,?,?,?, NOW())',
-    [nombre, precioONull(precio_compra), precioONull(precio_mayor), precioONull(precio_unidad), categoria_id]);
+    [nombre, compra.valor, mayor.valor, unidad.valor, categoria_id]);
     invalidarProductos();
     res.redirect('/agregar?exito=true');
 });
@@ -286,9 +301,10 @@ app.post('/modificar/guardar/:id', auth, async (req, res) => {
         const { categoria_id } = req.body;
         const nombre = limpiarNombre(req.body.nombre);
         if (!nombre) return quiereJson ? res.status(400).json({ error: 'Nombre vacío' }) : res.redirect('/modificar');
-        const compra = precioONull(req.body.precio_compra);
-        const mayor = precioONull(req.body.precio_mayor);
-        const unidad = precioONull(req.body.precio_unidad);
+        if (nombre.length > MAX_NOMBRE) return quiereJson ? res.status(400).json({ error: 'El nombre es muy largo (máximo ' + MAX_NOMBRE + ' letras).' }) : res.redirect('/modificar');
+        const pc = leerPrecio(req.body.precio_compra), pm = leerPrecio(req.body.precio_mayor), pu = leerPrecio(req.body.precio_unidad);
+        if (!pc.valido || !pm.valido || !pu.valido) return quiereJson ? res.status(400).json({ error: 'Revisa los precios: deben ser números (0 o más).' }) : res.redirect('/modificar');
+        const compra = pc.valor, mayor = pm.valor, unidad = pu.valor;
 
         const [filas] = await db.query('SELECT precio_compra, precio_mayor, precio_unidad FROM productos WHERE id = ?', [req.params.id]);
         if (!filas.length) return quiereJson ? res.status(404).json({ error: 'No existe' }) : res.redirect('/modificar');
@@ -328,18 +344,15 @@ app.post('/modificar/confirmar/:id', auth, async (req, res) => {
 });
 
 // --- 5. ELIMINAR ---
-app.get('/eliminar-menu', async (req, res) => {
-    const token = req.cookies.jwt;
-    if (!token) return res.redirect('/login');
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+app.get('/eliminar-menu', auth, async (req, res) => {
     const [productos, [categorias]] = await Promise.all([
         listarProductos(),
         db.query('SELECT * FROM categorias ORDER BY nombre ASC')
     ]);
-    res.render('eliminar', { usuario: decoded.user, productos, categorias });
+    res.render('eliminar', { usuario: req.usuario, productos, categorias });
 });
 
-app.get('/eliminar/:id', async (req, res) => {
+app.get('/eliminar/:id', auth, async (req, res) => {
     const origen = req.query.origen;
     await db.query('DELETE FROM productos WHERE id = ?', [req.params.id]);
     invalidarProductos();
@@ -348,11 +361,8 @@ app.get('/eliminar/:id', async (req, res) => {
 });
 
 // --- 6. LISTAS (ACTIVOS vs HISTORIAL) ---
-app.get('/lista', async (req, res) => {
-    const token = req.cookies.jwt;
-    if (!token) return res.redirect('/login');
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    
+app.get('/lista', auth, async (req, res) => {
+
     // Activas (Estado 1)
     const [listasActivas] = await db.query('SELECT * FROM listas WHERE estado = 1 ORDER BY id DESC');
     // Historial (Estado 0)
@@ -362,36 +372,37 @@ app.get('/lista', async (req, res) => {
 
     const armarListas = (listas) => listas.map(l => ({ ...l, items: items.filter(i => i.lista_id === l.id) }));
 
-    res.render('lista', { usuario: decoded.user, listasHoy: armarListas(listasActivas), listasHistorial: armarListas(listasHistorial) });
+    res.render('lista', { usuario: req.usuario, listasHoy: armarListas(listasActivas), listasHistorial: armarListas(listasHistorial) });
 });
 
 // APIs de Listas
-app.post('/api/listas/crear', async (req, res) => {
+app.post('/api/listas/crear', auth, async (req, res) => {
     if(req.body.nombre_lista) await db.query('INSERT INTO listas (nombre_lista, fecha, estado) VALUES (?, CURDATE(), 1)', [req.body.nombre_lista]);
     res.redirect('/lista');
 });
-app.get('/api/listas/archivar/:id', async (req, res) => {
+app.get('/api/listas/archivar/:id', auth, async (req, res) => {
     await db.query('UPDATE listas SET estado = 0 WHERE id = ?', [req.params.id]);
     res.redirect('/lista');
 });
-app.get('/api/listas/restaurar/:id', async (req, res) => {
+app.get('/api/listas/restaurar/:id', auth, async (req, res) => {
     await db.query('UPDATE listas SET estado = 1 WHERE id = ?', [req.params.id]);
     res.redirect('/lista');
 });
-app.get('/api/listas/eliminar/:id', async (req, res) => {
+app.get('/api/listas/eliminar/:id', auth, async (req, res) => {
+    await db.query('DELETE FROM items_lista WHERE lista_id = ?', [req.params.id]); // no dejar ítems huérfanos
     await db.query('DELETE FROM listas WHERE id = ?', [req.params.id]);
     res.redirect('/lista');
 });
 // APIs de Ítems
-app.post('/api/items/agregar', async (req, res) => {
+app.post('/api/items/agregar', auth, async (req, res) => {
     if(req.body.texto) await db.query('INSERT INTO items_lista (lista_id, texto) VALUES (?, ?)', [req.body.lista_id, req.body.texto]);
     res.redirect('/lista');
 });
-app.post('/api/items/toggle/:id', async (req, res) => {
+app.post('/api/items/toggle/:id', auth, async (req, res) => {
     await db.query('UPDATE items_lista SET completado = NOT completado WHERE id = ?', [req.params.id]);
     res.sendStatus(200);
 });
-app.get('/api/items/eliminar/:id', async (req, res) => {
+app.get('/api/items/eliminar/:id', auth, async (req, res) => {
     await db.query('DELETE FROM items_lista WHERE id = ?', [req.params.id]);
     res.redirect('/lista');
 });

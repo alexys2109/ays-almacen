@@ -78,22 +78,37 @@
             return 0;
         }
         if (a.t === b.t) return 1;
-        if (a.f === b.f) return 0.95;
+        // Distancia de escritura real: evita que letras repetidas/raras se "colapsen" y coincidan con todo
+        if (!modoBusqueda && Math.abs(a.f.length - b.f.length) > 2 && Math.abs(a.t.length - b.t.length) > 2) return 0;
+        let rawCache = -1;
+        const rawDist = function () { if (rawCache < 0) rawCache = distancia(a.t, b.t); return rawCache; };
+        if (a.f === b.f && a.f.length >= 2 && rawDist() <= 3) return 0.95;
         if (modoBusqueda) {
             const mp = minPrefijo || 2;
             if (a.t.length >= mp && b.t.indexOf(a.t) === 0) return 0.92;
             if (a.f.length >= mp && b.f.indexOf(a.f) === 0) return 0.88;
             if (a.t.length >= 3 && b.t.indexOf(a.t) > 0) return 0.7;
-            // error de escritura dentro del comienzo de la palabra
+            // error de escritura dentro del comienzo de la palabra (sonido o escritura tal cual)
             if (a.f.length >= 5) {
                 const trozo = b.f.slice(0, a.f.length);
-                if (distancia(a.f, trozo) <= 1) return 0.78;
+                if (distancia(a.f, trozo) <= 1 && distancia(a.t, b.t.slice(0, a.t.length)) <= 2) return 0.78;
             }
+            if (a.t.length >= 5 && distancia(a.t, b.t.slice(0, a.t.length)) <= 1) return 0.76;
         }
-        if (Math.abs(a.f.length - b.f.length) > 2) return 0;
-        const d = distancia(a.f, b.f);
-        if (d <= toleranciaEdicion(a.f, b.f)) return d === 1 ? 0.8 : 0.65;
-        return 0;
+        let mejor = 0;
+        if (Math.abs(a.f.length - b.f.length) <= 2) {
+            const d = distancia(a.f, b.f);
+            if (d <= toleranciaEdicion(a.f, b.f) && rawDist() <= toleranciaEdicion(a.f, b.f) + 1) mejor = d === 1 ? 0.8 : 0.65;
+        }
+        // Mismo chequeo con las letras tal como se escribieron (cubre letras faltantes o intercambiadas)
+        if (!mejor && Math.abs(a.t.length - b.t.length) <= 2) {
+            const d = distancia(a.t, b.t);
+            if (d <= toleranciaEdicion(a.t, b.t)) mejor = d === 1 ? 0.78 : 0.62;
+        }
+        // Palabras cortas con dos letras intercambiadas (vela/veal, poet/pote)
+        if (!mejor && a.t.length >= 3 && a.t.length <= 4 && a.t.length === b.t.length &&
+            a.t.split('').sort().join('') === b.t.split('').sort().join('') && distancia(a.t, b.t) === 1) mejor = 0.7;
+        return mejor;
     }
 
     // ---------- Búsqueda ----------
@@ -146,15 +161,24 @@
         return s / A.length;
     }
 
+    // Datos derivados de un nombre (se calculan una sola vez y quedan en el propio arreglo)
+    function derivados(A) {
+        if (!A._w) {
+            const w = A.filter(function (t) { return !t.num && !t.relleno; });
+            A._w = w.length ? w : A;
+            A._n = A.filter(function (t) { return t.num; }).map(function (t) { return t.t; }).sort().join(',');
+        }
+        return A;
+    }
+
     function similitud(A, B) {
         if (!A.length || !B.length) return 0;
+        derivados(A); derivados(B);
         // Se comparan las palabras clave (sin números ni unidades). Los números solo ajustan el resultado.
-        let wA = A.filter(function (t) { return !t.num && !t.relleno; });
-        let wB = B.filter(function (t) { return !t.num && !t.relleno; });
-        if (!wA.length || !wB.length) { wA = A; wB = B; }
+        let wA = A._w, wB = B._w;
+        if (wA === A !== (wB === B)) { wA = A; wB = B; }   // si solo uno tiene palabras clave, se usan todas
         let base = (direccion(wA, wB) + direccion(wB, wA)) / 2;
-        const nA = A.filter(function (t) { return t.num; }).map(function (t) { return t.t; }).sort().join(',');
-        const nB = B.filter(function (t) { return t.num; }).map(function (t) { return t.t; }).sort().join(',');
+        const nA = A._n, nB = B._n;
         if (nA && nB && nA !== nB) base *= 0.6;      // 45g vs 90g: probablemente son productos distintos
         else if ((nA && !nB) || (!nA && nB)) base *= 0.92;
         return base;
@@ -189,13 +213,13 @@
         const padre = [];
         for (let i = 0; i < n; i++) padre[i] = i;
         const raiz = function (x) { while (padre[x] !== x) { padre[x] = padre[padre[x]]; x = padre[x]; } return x; };
-        // Solo se comparan productos que comparten la letra inicial (fonética) de alguna palabra
+        // Solo se comparan productos que comparten las 2 primeras letras (fonéticas) de alguna palabra clave
         const cubetas = {};
         ind.forEach(function (e, i) {
             const vistas = {};
             e.toks.forEach(function (t) {
-                if (t.num) return;
-                const c = t.f.charAt(0);
+                if (t.num || t.relleno) return;
+                const c = t.f.slice(0, 2);
                 if (!vistas[c]) { vistas[c] = true; (cubetas[c] = cubetas[c] || []).push(i); }
             });
         });

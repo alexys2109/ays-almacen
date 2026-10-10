@@ -273,7 +273,7 @@ hr { border-color: var(--border); opacity: 1; }
 .alert-light { --bs-alert-color: var(--text-muted); --bs-alert-bg: #fff; --bs-alert-border-color: var(--border); }
 
 /* Etiquetas */
-.badge { font-weight: 600; border-radius: 999px; padding: 0.38em 0.8em; font-size: 0.74rem; letter-spacing: 0.01em; }
+.badge { font-weight: 600; border-radius: 999px; padding: 0.38em 0.8em; font-size: 0.78rem; letter-spacing: 0.01em; }
 .badge.bg-success { background-color: var(--green) !important; color: #fff !important; }
 .badge.bg-danger { background-color: var(--red) !important; color: #fff !important; }
 .badge.bg-warning { background-color: #e9d29b !important; color: #5a3a05 !important; }
@@ -291,7 +291,7 @@ hr { border-color: var(--border); opacity: 1; }
     color: var(--sec-ink);
     font-weight: 700;
     text-transform: uppercase;
-    font-size: 0.72rem;
+    font-size: 0.75rem;
     letter-spacing: 0.06em;
     padding: 13px 16px;
     white-space: nowrap;
@@ -361,18 +361,18 @@ textarea.input-nombre:focus { border-color: var(--sec); outline: none; box-shado
    ========================================================= */
 .frescura { display: inline-flex; align-items: center; gap: 9px; text-align: left; line-height: 1.25; }
 .frescura-texto { display: flex; flex-direction: column; }
-.frescura-texto b { font-size: 0.86rem; font-weight: 600; color: var(--text); }
-.frescura-texto small { font-size: 0.74rem; color: var(--text-muted); }
+.frescura-texto b { font-size: 0.88rem; font-weight: 600; color: var(--text); }
+.frescura-texto small { font-size: 0.8rem; color: var(--text-muted); }
 .dot-frescura { width: 13px; height: 13px; border-radius: 50%; flex-shrink: 0; display: inline-block; }
 .dot-verde { background: var(--f-verde); box-shadow: 0 0 0 3px rgba(31, 179, 94, 0.22); }
 .dot-amarillo { background: var(--f-amarillo); box-shadow: 0 0 0 3px rgba(245, 183, 0, 0.25); }
 .dot-naranja { background: var(--f-naranja); box-shadow: 0 0 0 3px rgba(247, 127, 30, 0.22); }
 .dot-rojo { background: var(--f-rojo); box-shadow: 0 0 0 3px rgba(230, 57, 70, 0.22); }
 
-.leyenda-frescura { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: 0.78rem; color: var(--text-muted); }
+.leyenda-frescura { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: 0.8rem; color: var(--text-muted); }
 .leyenda-frescura span { display: inline-flex; align-items: center; gap: 6px; }
 .leyenda-frescura .dot-frescura { width: 11px; height: 11px; box-shadow: none; }
-.detalle-fechas { font-size: 0.73rem; color: var(--text-faint); margin-top: 4px; line-height: 1.4; }
+.detalle-fechas { font-size: 0.78rem; color: var(--text-faint); margin-top: 4px; line-height: 1.4; }
 
 /* Filtros tipo "chip" (toman el color de la sección) */
 .chips-filtro { display: flex; flex-wrap: wrap; gap: 8px; }
@@ -398,7 +398,7 @@ textarea.input-nombre:focus { border-color: var(--sec); outline: none; box-shado
 .sugerencia { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border: 1px solid var(--border); border-radius: 12px; margin-bottom: 8px; background: var(--surface); }
 .sugerencia .sug-info { flex: 1; min-width: 0; }
 .sugerencia .sug-nombre { font-weight: 600; word-break: break-word; }
-.sugerencia .sug-precios { font-size: 0.82rem; color: var(--text-muted); font-variant-numeric: tabular-nums; }
+.sugerencia .sug-precios { font-size: 0.85rem; color: var(--text-muted); font-variant-numeric: tabular-nums; }
 
 /* =========================================================
    LISTAS (bloc de notas)
@@ -489,7 +489,7 @@ textarea.input-nombre:focus { border-color: var(--sec); outline: none; box-shado
 
     .table tbody td::before {
         content: attr(data-label);
-        font-size: 0.7rem;
+        font-size: 0.76rem;
         font-weight: 700;
         letter-spacing: 0.05em;
         text-transform: uppercase;
@@ -540,6 +540,11 @@ textarea.input-nombre:focus { border-color: var(--sec); outline: none; box-shado
 @media (min-width: 640px) and (max-width: 991px) {
     .table tbody { grid-template-columns: 1fr 1fr; gap: 16px; }
     .main-content { padding-left: 24px; padding-right: 24px; }
+}
+
+@media (max-width: 991px) {
+    .btn-sm { min-height: 40px; display: inline-flex; align-items: center; justify-content: center; }
+    .chip { min-height: 38px; }
 }
 
 @media (max-width: 575px) {
