@@ -518,6 +518,8 @@ app.get('/logout', async (req, res) => {
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => { console.log(`🚀 Servidor listo en http://localhost:${PORT}`); });
 asegurarEsquema().catch(e => console.error('❌ No se pudo preparar la tabla productos:', e.message));
+// Se deja lista la lista de productos y los grupos de duplicados al arrancar, para que la primera visita no espere
+asegurarEsquema().then(() => listarProductos()).then(p => calcularGrupos(p)).catch(() => { /* se calculará al entrar */ });
 
 
 // ==========================================

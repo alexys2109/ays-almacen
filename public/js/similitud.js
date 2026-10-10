@@ -69,9 +69,24 @@
         return m <= 4 ? 0 : (m <= 7 ? 1 : 2);
     }
 
+    // Memoria de comparaciones entre palabras: el vocabulario se repite mucho, así que casi todo se calcula una vez
+    const memoPalabras = new Map();
+
     // ---------- Parecido entre dos palabras (0..1) ----------
     // modoBusqueda: la palabra A se está escribiendo, así que puede ser solo el comienzo de B.
     function simPalabra(a, b, modoBusqueda, minPrefijo) {
+        if (modoBusqueda) return calcPalabra(a, b, modoBusqueda, minPrefijo);
+        const clave = a.t + '' + b.t;
+        let v = memoPalabras.get(clave);
+        if (v === undefined) {
+            v = calcPalabra(a, b, false);
+            if (memoPalabras.size > 300000) memoPalabras.clear();
+            memoPalabras.set(clave, v);
+        }
+        return v;
+    }
+
+    function calcPalabra(a, b, modoBusqueda, minPrefijo) {
         if (a.num || b.num) {
             if (a.t === b.t) return 1;
             if (modoBusqueda && a.num && b.num && b.t.indexOf(a.t) === 0) return 0.75; // escribiendo "45" -> 450
@@ -234,13 +249,13 @@
         const padre = [];
         for (let i = 0; i < n; i++) padre[i] = i;
         const raiz = function (x) { while (padre[x] !== x) { padre[x] = padre[padre[x]]; x = padre[x]; } return x; };
-        // Solo se comparan productos que comparten las 2 primeras letras (fonéticas) de alguna palabra clave
+        // Solo se comparan productos que comparten las 3 primeras letras (fonéticas) de alguna palabra clave
         const cubetas = {};
         ind.forEach(function (e, i) {
             const vistas = {};
             e.toks.forEach(function (t) {
                 if (t.num || t.relleno) return;
-                const c = t.f.slice(0, 2);
+                const c = t.f.slice(0, 3);
                 if (!vistas[c]) { vistas[c] = true; (cubetas[c] = cubetas[c] || []).push(i); }
             });
         });
