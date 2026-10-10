@@ -5,6 +5,7 @@ const jwt = require('jsonwebtoken');
 const dotenv = require('dotenv');
 const compression = require('compression');
 const crypto = require('crypto');
+const fs = require('fs');
 const db = require('./src/config/db'); // Tu conexión a TiDB
 const Similitud = require('./public/js/similitud');
 const Frescura = require('./public/js/frescura');
@@ -25,6 +26,13 @@ app.use(cookieParser());
 
 // Chequeo liviano (no usa la base de datos): sirve para mantener despierto el servicio con un monitor externo
 app.get('/salud', (req, res) => res.type('text').send('ok'));
+
+// Servicio de la app (copia de Buscar para uso sin internet). Lleva la versión del servidor para actualizarse en cada despliegue.
+const swPlantilla = fs.readFileSync(path.join(__dirname, 'src', 'sw.js'), 'utf8');
+app.get('/sw.js', (req, res) => {
+    res.set({ 'Content-Type': 'application/javascript; charset=utf-8', 'Cache-Control': 'no-cache', 'Service-Worker-Allowed': '/' });
+    res.send(swPlantilla.replace(/__VER__/g, String(app.locals.ver)));
+});
 
 // ==========================================
 //   SESIÓN PERMANENTE (ESTILO FACEBOOK)

@@ -21,7 +21,11 @@
                     localStorage.setItem('ays_cuentas', JSON.stringify(lista));
                 }
             } catch (e) { /* almacenamiento bloqueado: se continúa igual */ }
-            location.replace(<%- JSON.stringify(destino) %>);
+            // Al cerrar sesión se borra la copia de precios guardada en este dispositivo
+            var ir = function () { location.replace(<%- JSON.stringify(destino) %>); };
+            if (<%- JSON.stringify(destino) %> === '/login' && window.caches) {
+                Promise.race([caches.delete('ays-pages'), new Promise(function (r) { setTimeout(r, 900); })]).then(ir, ir);
+            } else { ir(); }
         })();
     </script>
 </body>

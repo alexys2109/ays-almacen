@@ -5,6 +5,14 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Buscar Productos</title>
+    <link rel="manifest" href="/manifest.webmanifest">
+    <meta name="theme-color" content="#1e2633">
+    <link rel="icon" type="image/png" href="/img/favicon-64.png">
+    <link rel="apple-touch-icon" href="/img/apple-touch-icon.png">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-title" content="AYS Almacén">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://unpkg.com/nprogress@0.2.0/nprogress.js"></script>
@@ -33,6 +41,11 @@
 
     <div class="main-content">
         <h2>Consulta de precios</h2>
+
+        <div id="bannerOffline" class="alert alert-warning d-none align-items-center justify-content-between flex-wrap gap-2">
+            <span id="bannerTexto"></span>
+            <button type="button" class="btn btn-sm btn-outline-warning" onclick="location.reload()">Reintentar</button>
+        </div>
 
         <div class="card border-0 shadow-sm mb-3">
             <div class="card-body">
@@ -111,6 +124,22 @@
     <script>
         const PRODUCTOS = <%- JSON.stringify(productos).replace(/</g, '\\u003c') %>;
         const indice = Similitud.indexar(PRODUCTOS);
+
+        // Hora del servidor al generar esta página. Si la pantalla viene de la copia guardada (sin internet),
+        // se suma el tiempo transcurrido para que "hace X días" siga siendo correcto, y se avisa claramente.
+        const SERVER_NOW = <%= Date.now() %>;
+        if (window.__MODO_OFFLINE) {
+            const extra = Math.max(0, (Date.now() - SERVER_NOW) / 1000);
+            PRODUCTOS.forEach(p => {
+                if (p.seg_cambio !== null && p.seg_cambio !== undefined) p.seg_cambio = Number(p.seg_cambio) + extra;
+                if (p.seg_confirmado !== null && p.seg_confirmado !== undefined) p.seg_confirmado = Number(p.seg_confirmado) + extra;
+            });
+            const cuando = new Date(SERVER_NOW).toLocaleString('es-PE', { dateStyle: 'medium', timeStyle: 'short', timeZone: 'America/Lima' }).replace(/\.$/, '');
+            const b = document.getElementById('bannerOffline');
+            document.getElementById('bannerTexto').innerHTML = '<i class="fa-solid fa-wifi me-2"></i><b>Sin conexión.</b> Estás viendo los precios guardados el ' + cuando + '. Pueden estar desactualizados; con internet se actualizan solos.';
+            b.classList.replace('d-none', 'd-flex');
+            window.addEventListener('online', () => location.reload());
+        }
         PRODUCTOS.forEach(p => { p.seg_precio = Frescura.segundosPrecio(p); });
 
         const buscador = document.getElementById('buscador');
