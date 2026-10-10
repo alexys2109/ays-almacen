@@ -32,15 +32,15 @@
     --red-soft: #fbe8e6;
 
     /* Frescura del precio */
-    --f-verde: #3f9b72;
-    --f-amarillo: #d6a830;
-    --f-naranja: #d98a3d;
-    --f-rojo: #c4524b;
+    --f-verde: #1fb35e;
+    --f-amarillo: #f5b700;
+    --f-naranja: #f77f1e;
+    --f-rojo: #e63946;
 
     /* Color de la sección actual (se cambia con body[data-sec]) */
-    --sec: #2c5a94;
-    --sec-soft: #dfe9f6;
-    --sec-ink: #1b3e6b;
+    --sec: #1f3d6b;
+    --sec-soft: #eef2f8;
+    --sec-ink: #1c2430;
 
     /* Alias para compatibilidad */
     --primary: var(--navy);
@@ -64,13 +64,6 @@
     --bs-link-color: #1f3d6b;
 }
 
-/* Un color por sección: así se distingue de un vistazo dónde estás */
-body[data-sec="buscar"]     { --sec: #2c5a94; --sec-soft: #dfe9f6; --sec-ink: #1b3e6b; }
-body[data-sec="modificar"]  { --sec: #b7791f; --sec-soft: #faedd0; --sec-ink: #7a4f0b; }
-body[data-sec="agregar"]    { --sec: #2f7a5a; --sec-soft: #dcf0e5; --sec-ink: #1d5640; }
-body[data-sec="duplicados"] { --sec: #6b5ca5; --sec-soft: #e9e5f6; --sec-ink: #473b7a; }
-body[data-sec="eliminar"]   { --sec: #b2423a; --sec-soft: #fae4e1; --sec-ink: #85302a; }
-body[data-sec="lista"]      { --sec: #23808a; --sec-soft: #d9eef0; --sec-ink: #155961; }
 
 * { box-sizing: border-box; }
 html { -webkit-text-size-adjust: 100%; }
@@ -129,7 +122,7 @@ a { color: var(--navy); }
     position: fixed;
     top: 0;
     left: 0;
-    background: linear-gradient(180deg, #1b3560 0%, #12233f 100%);
+    background: #1e2633;
     color: #e6edf8;
     z-index: 1100;
     overflow-y: auto;
@@ -155,72 +148,57 @@ a { color: var(--navy); }
 .sidebar-menu a {
     display: flex;
     align-items: center;
-    padding: 9px 12px;
-    color: #c9d6ea;
+    padding: 11px 14px;
+    color: #b8c2d2;
     text-decoration: none;
-    border-radius: 12px;
+    border-radius: 10px;
     font-size: 0.94rem;
     font-weight: 500;
     transition: background 0.15s, color 0.15s;
 }
 
-.sidebar-menu a:hover { background: rgba(255, 255, 255, 0.08); color: #fff; }
+.sidebar-menu a:hover { background: rgba(255, 255, 255, 0.07); color: #fff; }
 
 .sidebar-menu a.active {
-    background: rgba(255, 255, 255, 0.14);
+    background: rgba(255, 255, 255, 0.12);
     color: #fff;
     font-weight: 600;
-    box-shadow: inset 4px 0 0 var(--ic, #fff);
+    box-shadow: inset 3px 0 0 #8fb0e3;
 }
 
-/* Icono dentro de una fichita de color propia de cada opción */
 .sidebar-menu i {
-    width: 32px;
-    height: 32px;
-    border-radius: 9px;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
+    width: 24px;
+    text-align: center;
     margin-right: 12px;
-    font-size: 0.9rem;
-    color: #fff;
-    background: var(--ic, #5f6b7e);
+    font-size: 1rem;
+    color: #8793a6;
     flex-shrink: 0;
 }
-.sidebar-menu li:nth-child(1) { --ic: #3b78c4; }  /* Buscar */
-.sidebar-menu li:nth-child(2) { --ic: #c98a26; }  /* Modificar */
-.sidebar-menu li:nth-child(3) { --ic: #3a9570; }  /* Agregar */
-.sidebar-menu li:nth-child(4) { --ic: #7d6cc0; }  /* Duplicados */
-.sidebar-menu li:nth-child(5) { --ic: #c4524b; }  /* Eliminar */
-.sidebar-menu li:nth-child(6) { --ic: #2f9aa6; }  /* Lista */
-.sidebar-menu li:nth-child(7) { --ic: #6b7a92; }  /* Cerrar sesión */
+.sidebar-menu a:hover i, .sidebar-menu a.active i { color: #fff; }
 
-.sidebar-menu a.text-danger { color: #f2b8b2 !important; }
-.sidebar-menu a.text-danger:hover { background: rgba(196, 82, 75, 0.2); color: #fff !important; }
+.sidebar-menu a.text-danger { color: #f0a9a3 !important; }
+.sidebar-menu a.text-danger i { color: #f0a9a3; }
+.sidebar-menu a.text-danger:hover { background: rgba(230, 57, 70, 0.16); color: #fff !important; }
 
 /* =========================================================
    CONTENIDO
    ========================================================= */
 .main-content { margin-left: var(--sidebar-width); padding: 32px 40px 56px; min-height: 100vh; }
 
-/* Título de página como banda del color de la sección */
+/* Título de página: simple, de un solo color */
 .main-content > h2 {
     display: flex;
     align-items: center;
-    gap: 12px;
-    font-size: 1.45rem;
+    gap: 10px;
+    font-size: 1.5rem;
     font-weight: 700;
     letter-spacing: -0.015em;
-    color: var(--sec-ink) !important;
-    background: var(--sec-soft);
-    border-left: 6px solid var(--sec);
-    border-radius: 14px;
-    padding: 14px 20px;
-    margin-bottom: 1.4rem !important;
+    color: var(--navy-dark) !important;
+    margin-bottom: 1.3rem !important;
 }
-.main-content > h2 i { color: var(--sec); margin: 0; }
+.main-content > h2 i { color: var(--navy); margin: 0; }
 .main-content > h2.text-center { justify-content: center; }
-.banda-seccion { background: var(--sec-soft); border-left: 6px solid var(--sec); border-radius: 14px; padding: 14px 20px; }
+.banda-seccion { padding: 0; }
 
 .card {
     background: var(--surface);
@@ -237,9 +215,6 @@ a { color: var(--navy); }
 .shadow-sm { box-shadow: var(--shadow-sm) !important; }
 hr { border-color: var(--border); opacity: 1; }
 
-/* Tarjetas principales (tabla / formulario) con filo de color */
-.card:has(> .table-responsive),
-.card:has(> .card-body > .table-responsive) { border-top: 4px solid var(--sec); }
 
 /* Formularios */
 .form-control, .form-select {
@@ -300,15 +275,15 @@ hr { border-color: var(--border); opacity: 1; }
 .card .table-responsive { background: var(--surface); }
 
 .table thead th {
-    background: var(--sec-soft);
-    color: var(--sec-ink);
+    background: #f1f4f9;
+    color: var(--text-muted);
     font-weight: 700;
     text-transform: uppercase;
     font-size: 0.72rem;
     letter-spacing: 0.06em;
     padding: 13px 16px;
     white-space: nowrap;
-    border-bottom: 2px solid var(--sec);
+    border-bottom: 1px solid var(--border);
 }
 
 .table tbody td {
@@ -322,7 +297,7 @@ hr { border-color: var(--border); opacity: 1; }
 
 .table tbody tr:nth-child(even) td { background: #f6f8fc; }
 .table tbody tr:last-child td { border-bottom: 0; }
-.table tbody tr:hover td { background: var(--sec-soft); }
+.table tbody tr:hover td { background: #edf1f8; }
 
 .table td[data-label="Nombre"] { min-width: 240px; font-weight: 600; color: var(--text); }
 
@@ -376,15 +351,15 @@ textarea.input-nombre:focus { border-color: var(--sec); outline: none; box-shado
 .frescura-texto { display: flex; flex-direction: column; }
 .frescura-texto b { font-size: 0.86rem; font-weight: 600; color: var(--text); }
 .frescura-texto small { font-size: 0.74rem; color: var(--text-muted); }
-.dot-frescura { width: 12px; height: 12px; border-radius: 50%; flex-shrink: 0; display: inline-block; box-shadow: 0 0 0 3px rgba(16, 24, 40, 0.07); }
-.dot-verde { background: var(--f-verde); }
-.dot-amarillo { background: var(--f-amarillo); }
-.dot-naranja { background: var(--f-naranja); }
-.dot-rojo { background: var(--f-rojo); }
+.dot-frescura { width: 13px; height: 13px; border-radius: 50%; flex-shrink: 0; display: inline-block; }
+.dot-verde { background: var(--f-verde); box-shadow: 0 0 0 3px rgba(31, 179, 94, 0.22); }
+.dot-amarillo { background: var(--f-amarillo); box-shadow: 0 0 0 3px rgba(245, 183, 0, 0.25); }
+.dot-naranja { background: var(--f-naranja); box-shadow: 0 0 0 3px rgba(247, 127, 30, 0.22); }
+.dot-rojo { background: var(--f-rojo); box-shadow: 0 0 0 3px rgba(230, 57, 70, 0.22); }
 
 .leyenda-frescura { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: 0.78rem; color: var(--text-muted); }
 .leyenda-frescura span { display: inline-flex; align-items: center; gap: 6px; }
-.leyenda-frescura .dot-frescura { width: 9px; height: 9px; box-shadow: none; }
+.leyenda-frescura .dot-frescura { width: 11px; height: 11px; box-shadow: none; }
 .detalle-fechas { font-size: 0.73rem; color: var(--text-faint); margin-top: 4px; line-height: 1.4; }
 
 /* Filtros tipo "chip" (toman el color de la sección) */
@@ -395,11 +370,11 @@ textarea.input-nombre:focus { border-color: var(--sec); outline: none; box-shado
     border-radius: 999px; padding: 6px 13px; font-size: 0.82rem; font-weight: 500;
     cursor: pointer; transition: background 0.15s, border-color 0.15s; line-height: 1.2;
 }
-.chip:hover { background: var(--sec-soft); border-color: var(--sec); }
-.chip.activo { background: var(--sec); border-color: var(--sec); color: #fff; font-weight: 600; }
+.chip:hover { background: #f1f4f9; border-color: #aeb9c9; }
+.chip.activo { background: var(--navy); border-color: var(--navy); color: #fff; font-weight: 600; }
 .chip .n { font-variant-numeric: tabular-nums; color: var(--text-faint); font-weight: 600; background: #eef2f7; border-radius: 999px; padding: 0 7px; }
-.chip.activo .n { color: var(--sec-ink); background: #fff; }
-.chip .dot-frescura { width: 9px; height: 9px; box-shadow: none; }
+.chip.activo .n { color: var(--navy); background: #fff; }
+.chip .dot-frescura { width: 11px; height: 11px; box-shadow: none; }
 
 .fila-guardada td { animation: parpadeoVerde 1.3s ease; }
 @keyframes parpadeoVerde { 0% { background: var(--green-soft); } 100% { background: transparent; } }
@@ -408,7 +383,7 @@ textarea.input-nombre:focus { border-color: var(--sec); outline: none; box-shado
 .acciones-doble .btn { white-space: nowrap; }
 
 /* Avisos de productos parecidos (Agregar) */
-.sugerencia { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border: 1px solid var(--border); border-left: 4px solid var(--sec); border-radius: 12px; margin-bottom: 8px; background: var(--surface); }
+.sugerencia { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border: 1px solid var(--border); border-radius: 12px; margin-bottom: 8px; background: var(--surface); }
 .sugerencia .sug-info { flex: 1; min-width: 0; }
 .sugerencia .sug-nombre { font-weight: 600; word-break: break-word; }
 .sugerencia .sug-precios { font-size: 0.82rem; color: var(--text-muted); font-variant-numeric: tabular-nums; }
@@ -418,7 +393,7 @@ textarea.input-nombre:focus { border-color: var(--sec); outline: none; box-shado
    ========================================================= */
 .item-lista { border-bottom: 1px solid var(--border-soft); padding: 12px 5px; }
 .item-texto { font-size: 1rem; line-height: 1.4; word-break: break-word; display: block; padding-right: 10px; }
-.card-lista { border-top: 4px solid var(--sec); }
+.card-lista { border-top: 3px solid var(--navy); }
 
 /* =========================================================
    RESPONSIVE: tablet y celular
@@ -433,7 +408,7 @@ textarea.input-nombre:focus { border-color: var(--sec); outline: none; box-shado
         top: 0; left: 0; right: 0;
         height: 58px;
         background: var(--surface) url('/img/logo_almacen.PNG') no-repeat 18px center / auto 36px;
-        border-bottom: 4px solid var(--sec);
+        border-bottom: 1px solid var(--border);
         box-shadow: var(--shadow-sm);
         z-index: 900;
     }
@@ -464,7 +439,7 @@ textarea.input-nombre:focus { border-color: var(--sec); outline: none; box-shado
     .sidebar.active + .menu-toggle-btn i::before { content: "\f00d"; }
 
     .main-content { margin-left: 0; padding: 76px 14px 100px; }
-    .main-content > h2 { font-size: 1.2rem; padding: 12px 16px; margin-bottom: 1rem !important; }
+    .main-content > h2 { font-size: 1.3rem; margin-bottom: 1rem !important; }
 
     .sidebar { transform: translateX(-100%); width: min(300px, 86vw); }
     .sidebar.active { transform: translateX(0); box-shadow: 0 0 60px rgba(16, 24, 40, 0.45); }
@@ -482,7 +457,6 @@ textarea.input-nombre:focus { border-color: var(--sec); outline: none; box-shado
         flex-direction: column;
         background: var(--surface);
         border: 1px solid var(--border);
-        border-top: 4px solid var(--sec);
         border-radius: var(--radius);
         box-shadow: var(--shadow-sm);
         overflow: hidden;
@@ -524,8 +498,8 @@ textarea.input-nombre:focus { border-color: var(--sec); outline: none; box-shado
         padding: 14px 16px 12px;
         font-size: 1.04rem;
         line-height: 1.35;
-        background: var(--sec-soft) !important;
-        color: var(--sec-ink);
+        background: #f1f4f9 !important;
+        color: var(--text);
     }
     .table tbody td[data-label="Nombre"]::before { display: none; }
     .table tbody td[data-label="Nombre"] textarea.input-nombre { min-width: 0; text-align: left; }
