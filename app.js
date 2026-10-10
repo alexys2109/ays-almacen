@@ -14,12 +14,21 @@ dotenv.config();
 const app = express();
 app.set('trust proxy', 1); // Render va detrás de un proxy HTTPS (para req.secure)
 app.locals.ver = Date.now(); // versión para que el navegador no use JS viejo en caché
+app.locals.vend = '1';       // versión de las librerías propias (public/vendor). Subir el número si se actualizan.
 
 // --- CONFIGURACIÓN Y MIDDLEWARE ---
 app.use(compression()); // Comprimir respuestas (Velocidad)
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
-app.use(express.static(path.join(__dirname, 'public'), { maxAge: '1d' })); // Cachear CSS
+// Archivos estáticos: las librerías y los archivos con ?v= no cambian, así que se guardan mucho tiempo en el teléfono
+app.use(express.static(path.join(__dirname, 'public'), {
+    maxAge: '1d',
+    setHeaders: (res, ruta) => {
+        if (/[\\/]vendor[\\/]/.test(ruta)) res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+        else if (/\.(css|js)$/.test(ruta)) res.setHeader('Cache-Control', 'public, max-age=2592000');
+        else if (/\.(png|PNG|jpg|svg|ico)$/.test(ruta)) res.setHeader('Cache-Control', 'public, max-age=604800');
+    }
+}));
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 app.use(cookieParser());
@@ -129,6 +138,15 @@ function nuevoTokenAgregar() {
     return t;
 }
 
+let cacheCategorias = { filas: null, en: 0 };
+async function listarCategorias() {
+    if (!cacheCategorias.filas || Date.now() - cacheCategorias.en > 5 * 60 * 1000) {
+        const [filas] = await db.query('SELECT * FROM categorias ORDER BY nombre ASC');
+        cacheCategorias = { filas, en: Date.now() };
+    }
+    return cacheCategorias.filas;
+}
+
 function auth(req, res, next) {
     try {
         req.usuario = jwt.verify(req.cookies.jwt || '', process.env.JWT_SECRET).user;
@@ -171,7 +189,7 @@ app.get('/', async (req, res) => {
         // Traemos todo para los filtros del buscador
         const [productos, [categorias]] = await Promise.all([
             listarProductos(),
-            db.query('SELECT * FROM categorias ORDER BY nombre ASC')
+            listarCategorias().then(c => [c])
         ]);
         
         res.render('index', { titulo: 'Buscar Productos', usuario: decoded.user, productos, categorias });
@@ -234,7 +252,7 @@ app.post('/api/duplicados/conservar', auth, async (req, res) => {
 app.get('/agregar', auth, async (req, res) => {
     // Lista de productos para avisar de parecidos mientras se escribe
     const [categorias, productos] = await Promise.all([
-        db.query('SELECT * FROM categorias ORDER BY nombre ASC').then(r => r[0]),
+        listarCategorias(),
         listarProductos()
     ]);
     res.render('agregar', { usuario: req.usuario, categorias, exito: req.query.exito, error: req.query.error || '', productos, token: nuevoTokenAgregar() });
@@ -267,7 +285,7 @@ app.post('/agregar', auth, async (req, res) => {
 // La página carga todos los productos una sola vez (/api/productos/todos) y filtra/ordena en el navegador
 // con la búsqueda tolerante a errores. Admite ?id=123 para abrir un producto concreto.
 app.get('/modificar', auth, async (req, res) => {
-    const [categorias] = await db.query('SELECT * FROM categorias ORDER BY nombre ASC');
+    const categorias = await listarCategorias();
     res.render('modificar', { usuario: req.usuario, categorias, idSel: req.query.id || '' });
 });
 
@@ -355,7 +373,7 @@ app.post('/modificar/confirmar/:id', auth, async (req, res) => {
 app.get('/eliminar-menu', auth, async (req, res) => {
     const [productos, [categorias]] = await Promise.all([
         listarProductos(),
-        db.query('SELECT * FROM categorias ORDER BY nombre ASC')
+        listarCategorias().then(c => [c])
     ]);
     res.render('eliminar', { usuario: req.usuario, productos, categorias });
 });
@@ -371,12 +389,11 @@ app.get('/eliminar/:id', auth, async (req, res) => {
 // --- 6. LISTAS (ACTIVOS vs HISTORIAL) ---
 app.get('/lista', auth, async (req, res) => {
 
-    // Activas (Estado 1)
-    const [listasActivas] = await db.query('SELECT * FROM listas WHERE estado = 1 ORDER BY id DESC');
-    // Historial (Estado 0)
-    const [listasHistorial] = await db.query('SELECT * FROM listas WHERE estado = 0 ORDER BY id DESC LIMIT 10');
-    // Ítems
-    const [items] = await db.query('SELECT * FROM items_lista');
+    const [[listasActivas], [listasHistorial], [items]] = await Promise.all([
+        db.query('SELECT * FROM listas WHERE estado = 1 ORDER BY id DESC'),
+        db.query('SELECT * FROM listas WHERE estado = 0 ORDER BY id DESC LIMIT 10'),
+        db.query('SELECT * FROM items_lista')
+    ]);
 
     const armarListas = (listas) => listas.map(l => ({ ...l, items: items.filter(i => i.lista_id === l.id) }));
 

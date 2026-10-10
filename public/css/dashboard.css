@@ -4,7 +4,14 @@
    fondo gris azulado y tarjetas blancas.
    ========================================================= */
 
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+@font-face {
+    font-family: 'Inter';
+    font-style: normal;
+    font-weight: 100 900;
+    font-display: swap;
+    src: url('/vendor/fonts/inter-latin.woff2') format('woff2');
+    unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
 
 :root {
     /* Marca */
@@ -125,7 +132,7 @@ a { color: var(--navy); }
     padding: 34px 32px 32px;
 }
 
-.login-logo { display: block; height: 62px; width: auto; margin: 0 auto 20px; }
+.login-logo { display: block; height: 54px; width: auto; margin: 0 auto 20px; }
 .login-titulo { font-size: 1.3rem; font-weight: 700; text-align: center; margin: 0 0 4px; letter-spacing: -0.01em; }
 .login-sub { text-align: center; color: var(--text-muted); font-size: 0.9rem; margin: 0 0 24px; }
 .form-floating > .form-control { height: 54px; border-radius: 10px; }
@@ -155,7 +162,7 @@ a { color: var(--navy); }
     height: 62px;
     margin: 0;
     border-radius: 14px;
-    background: #fff url('/img/logo_almacen.PNG') center / auto 46px no-repeat;
+    background: #fff url('/img/logo-ays.png') center / auto 40px no-repeat;
     box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25);
 }
 
@@ -424,7 +431,7 @@ textarea.input-nombre:focus { border-color: var(--sec); outline: none; box-shado
         position: fixed;
         top: 0; left: 0; right: 0;
         height: 58px;
-        background: var(--surface) url('/img/logo_almacen.PNG') no-repeat 18px center / auto 36px;
+        background: var(--surface) url('/img/logo-ays.png') no-repeat 18px center / auto 31px;
         border-bottom: 1px solid var(--border);
         box-shadow: var(--shadow-sm);
         z-index: 900;
@@ -572,4 +579,24 @@ textarea.input-nombre:focus { border-color: var(--sec); outline: none; box-shado
         font-size: 16px !important;
     }
     .sidebar { height: 100vh; height: 100dvh; }
+}
+
+
+/* =========================================================
+   Celular: filtros compactos para ver más productos
+   ========================================================= */
+@media (max-width: 991px) {
+    .leyenda-frescura { display: none; }   /* los filtros de colores ya explican cada color */
+    .chips-filtro {
+        flex-wrap: nowrap;
+        overflow-x: auto;
+        touch-action: pan-x pan-y;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: none;
+        padding-bottom: 4px;
+        margin-right: -4px;
+    }
+    .chips-filtro::-webkit-scrollbar { display: none; }
+    .chips-filtro .chip { flex-shrink: 0; white-space: nowrap; }
+    .barra-filtros .card-body { padding: 12px !important; }
 }

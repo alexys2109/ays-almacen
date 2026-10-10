@@ -13,10 +13,11 @@
     <meta name="apple-mobile-web-app-title" content="Precios AYS">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
 
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <script src="https://unpkg.com/nprogress@0.2.0/nprogress.js"></script>
-    <link rel="stylesheet" href="https://unpkg.com/nprogress@0.2.0/nprogress.css" />
+    <link rel="preload" href="/vendor/fonts/inter-latin.woff2" as="font" type="font/woff2" crossorigin>
+    <link href="/vendor/bootstrap/bootstrap.min.css?v=<%= vend %>" rel="stylesheet">
+    <link rel="stylesheet" href="/vendor/fontawesome/css/all.min.css?v=<%= vend %>">
+    <script src="/vendor/nprogress/nprogress.js?v=<%= vend %>"></script>
+    <link rel="stylesheet" href="/vendor/nprogress/nprogress.css?v=<%= vend %>" />
     <link rel="stylesheet" href="/css/dashboard.css?v=<%= ver %>">
 
     <style>
@@ -54,18 +55,18 @@
             <a href="/modificar" class="btn btn-sm btn-outline-primary">Ver todos</a>
         </div>
 
-        <div class="card border-0 shadow-sm mb-3">
+        <div class="card border-0 shadow-sm mb-3 barra-filtros">
             <div class="card-body py-3">
                 <div class="row g-2 align-items-center">
 
-                    <div class="col-12 col-md-5">
+                    <div class="col-12 col-md-6">
                         <div class="input-group">
                             <span class="input-group-text bg-white border-end-0"><i class="fa-solid fa-magnifying-glass text-muted"></i></span>
                             <input type="text" id="inputBusqueda" class="form-control border-start-0" placeholder="Buscar producto..." autocomplete="off">
                         </div>
                     </div>
 
-                    <div class="col-12 col-sm-6 col-md-3">
+                    <div class="col-8 col-md-4">
                         <select id="selectCategoria" class="form-select">
                             <option value="">Todas las categorías</option>
                             <% categorias.forEach(c => { %>
@@ -74,16 +75,8 @@
                         </select>
                     </div>
 
-                    <div class="col-12 col-sm-6 col-md-3">
-                        <select id="selectOrden" class="form-select">
-                            <option value="nombre">A - Z</option>
-                            <option value="viejos">Más desactualizados primero</option>
-                            <option value="nuevos">Cambiados recientemente</option>
-                        </select>
-                    </div>
-
-                    <div class="col-12 col-md-1">
-                        <button id="btnReset" class="btn btn-outline-secondary w-100" title="Limpiar"><i class="fa-solid fa-rotate-left"></i></button>
+                    <div class="col-4 col-md-2">
+                        <button id="btnReset" class="btn btn-outline-secondary w-100" title="Limpiar"><i class="fa-solid fa-rotate-left"></i><span class="d-none d-xl-inline"> Limpiar</span></button>
                     </div>
                 </div>
 
@@ -140,7 +133,6 @@
 
         const inputBusqueda = document.getElementById('inputBusqueda');
         const selectCategoria = document.getElementById('selectCategoria');
-        const selectOrden = document.getElementById('selectOrden');
         const btnReset = document.getElementById('btnReset');
         const tablaBody = document.getElementById('tablaBody');
         const loader = document.getElementById('loader');
@@ -212,10 +204,12 @@
                 if (catId) lista = lista.filter(p => String(p.categoria_id) === catId);
                 dibujarChips(lista);
                 if (filtroFrescura) lista = lista.filter(p => claseDe(p) === filtroFrescura);
-                const orden = selectOrden.value;
-                if (orden === 'viejos') lista = lista.slice().sort((a, b) => (b.seg_precio ?? 1e12) - (a.seg_precio ?? 1e12));
-                else if (orden === 'nuevos') lista = lista.slice().sort((a, b) => (a.seg_precio ?? 1e12) - (b.seg_precio ?? 1e12));
-                else if (!texto.trim()) lista = lista.slice().sort((a, b) => a.nombre.localeCompare(b.nombre, 'es'));
+                // con texto manda el parecido; con un filtro de color, lo más antiguo primero (lo más reciente en verde); si no, A-Z
+                if (!texto.trim()) {
+                    if (filtroFrescura === 'verde') lista = lista.slice().sort((a, b) => (a.seg_precio ?? 1e12) - (b.seg_precio ?? 1e12));
+                    else if (filtroFrescura) lista = lista.slice().sort((a, b) => (b.seg_precio ?? 1e12) - (a.seg_precio ?? 1e12));
+                    else lista = lista.slice().sort((a, b) => a.nombre.localeCompare(b.nombre, 'es'));
+                }
             }
 
             filtrados = lista;
@@ -359,7 +353,6 @@
         // --- EVENTOS ---
         inputBusqueda.addEventListener('input', () => { clearTimeout(temporizador); temporizador = setTimeout(aplicarFiltros, 150); });
         selectCategoria.addEventListener('change', aplicarFiltros);
-        selectOrden.addEventListener('change', aplicarFiltros);
         chips.addEventListener('click', e => {
             const b = e.target.closest('button[data-f]');
             if (!b) return;
@@ -368,7 +361,7 @@
         });
         btnReset.addEventListener('click', () => {
             if (ID_SELECCIONADO) { location.href = '/modificar'; return; }
-            inputBusqueda.value = ''; selectCategoria.value = ''; selectOrden.value = 'nombre'; filtroFrescura = '';
+            inputBusqueda.value = ''; selectCategoria.value = ''; filtroFrescura = '';
             aplicarFiltros();
         });
 

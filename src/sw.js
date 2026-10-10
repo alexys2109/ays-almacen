@@ -11,7 +11,14 @@ const PRECACHE = [
     '/js/similitud.js?v=' + VER,
     '/js/frescura.js?v=' + VER,
     '/js/ui.js?v=' + VER,
-    '/img/logo_almacen.PNG',
+    '/vendor/bootstrap/bootstrap.min.css?v=1',
+    '/vendor/fontawesome/css/all.min.css?v=1',
+    '/vendor/fontawesome/webfonts/fa-solid-900.woff2',
+    '/vendor/fontawesome/webfonts/fa-regular-400.woff2',
+    '/vendor/nprogress/nprogress.js?v=1',
+    '/vendor/nprogress/nprogress.css?v=1',
+    '/vendor/fonts/inter-latin.woff2',
+    '/img/logo-ays.png',
     '/img/icon-192.png'
 ];
 
