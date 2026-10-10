@@ -12,7 +12,7 @@
     <link rel="stylesheet" href="/css/dashboard.css?v=<%= ver %>">
 </head>
 
-<body>
+<body data-sec="buscar">
     <nav class="sidebar">
         <div class="sidebar-header">
             <h3>AYS SOFTWARE</h3>
@@ -169,9 +169,9 @@
             tbody.innerHTML = visibles.map(p => `
                 <tr>
                     <td data-label="Nombre">${Frescura.esc(p.nombre)}</td>
-                    <td data-label="Compra" class="num precio-compra">${dinero(p.precio_compra)}</td>
-                    <td data-label="Mayor" class="num precio-mayor">${dinero(p.precio_mayor)}</td>
-                    <td data-label="Unidad" class="num precio-unidad">${dinero(p.precio_unidad)}</td>
+                    <td data-label="Compra" class="num precio-compra"><span class="pill">${dinero(p.precio_compra)}</span></td>
+                    <td data-label="Mayor" class="num precio-mayor"><span class="pill">${dinero(p.precio_mayor)}</span></td>
+                    <td data-label="Unidad" class="num precio-unidad"><span class="pill">${dinero(p.precio_unidad)}</span></td>
                     <td data-label="Precio al día">${Frescura.insignia(p)}</td>
                 </tr>`).join('') ||
                 '<tr><td colspan="5" class="text-center py-5 text-muted" style="display:table-cell">No se encontraron productos.</td></tr>';

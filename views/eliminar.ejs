@@ -10,7 +10,7 @@
     <link rel="stylesheet" href="/css/dashboard.css?v=<%= ver %>">
 </head>
 
-<body>
+<body data-sec="eliminar">
 
     <nav class="sidebar">
         <div class="sidebar-header">
@@ -120,9 +120,9 @@
                     <td data-label="ID" class="text-muted">#${p.id}</td>
                     <td data-label="Nombre">${Frescura.esc(p.nombre)}</td>
                     <td data-label="Precio al día">${Frescura.insignia(p)}</td>
-                    <td data-label="Compra" class="num precio-compra">${dinero(p.precio_compra)}</td>
-                    <td data-label="Mayor" class="num precio-mayor">${dinero(p.precio_mayor)}</td>
-                    <td data-label="Unidad" class="num precio-unidad">${dinero(p.precio_unidad)}</td>
+                    <td data-label="Compra" class="num precio-compra"><span class="pill">${dinero(p.precio_compra)}</span></td>
+                    <td data-label="Mayor" class="num precio-mayor"><span class="pill">${dinero(p.precio_mayor)}</span></td>
+                    <td data-label="Unidad" class="num precio-unidad"><span class="pill">${dinero(p.precio_unidad)}</span></td>
                     <td data-label="Eliminar">
                         <a href="/eliminar/${p.id}" class="btn btn-outline-danger btn-sm w-100 btn-borrar" data-nombre="${Frescura.esc(p.nombre)}">
                             <i class="fa-solid fa-trash me-1"></i> Borrar

@@ -9,13 +9,13 @@
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script src="https://unpkg.com/nprogress@0.2.0/nprogress.js"></script>
     <link rel="stylesheet" href="https://unpkg.com/nprogress@0.2.0/nprogress.css" />
-    <link rel="stylesheet" href="/css/dashboard.css">
+    <link rel="stylesheet" href="/css/dashboard.css?v=<%= ver %>">
     <style>
         .tachado { text-decoration: line-through; color: #98a2b3; }
         .badge-fecha { font-size: 0.75rem; background: #f2f4f7; color: #667085; padding: 4px 9px; border-radius: 6px; }
     </style>
 </head>
-<body>
+<body data-sec="lista">
 
     <nav class="sidebar">
         <div class="sidebar-header"><h3>AYS SOFTWARE</h3></div>
@@ -33,13 +33,13 @@
 
     <div class="main-content">
         
-        <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-3">
-            <div class="text-center text-md-start w-100 w-md-auto">
-                <h2 class="m-0" style="font-size:1.55rem;font-weight:700;letter-spacing:-.015em">Mis listas activas</h2>
-                <p class="text-muted mb-0 small">Estas listas permanecerán aquí hasta que las archives.</p>
+        <div class="banda-seccion d-flex justify-content-between align-items-center mb-4 flex-wrap gap-3">
+            <div class="text-center text-md-start flex-grow-1">
+                <h2 class="m-0" style="font-size:1.45rem;font-weight:700;letter-spacing:-.015em;color:var(--sec-ink)">Mis listas activas</h2>
+                <p class="mb-0 small" style="color:var(--sec-ink);opacity:.8">Estas listas permanecerán aquí hasta que las archives.</p>
             </div>
             
-            <button onclick="crearLista()" class="btn btn-primary shadow-sm w-100 w-md-auto">
+            <button onclick="crearLista()" class="btn btn-primary shadow-sm flex-grow-1 flex-md-grow-0">
                 <i class="fa-solid fa-plus me-2"></i> Nueva Lista
             </button>
         </div>

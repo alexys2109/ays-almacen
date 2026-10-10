@@ -42,7 +42,7 @@
     </style>
 </head>
 
-<body>
+<body data-sec="duplicados">
 
     <nav class="sidebar">
         <div class="sidebar-header">
@@ -131,9 +131,9 @@
                                                         <% if (masReciente && masReciente.id === p.id) { %><span class="badge bg-success ms-1" title="Es el que tiene el precio más reciente"><i class="fa-solid fa-check me-1"></i>precio más reciente</span><% } %>
                                                     </td>
                                                     <td data-label="Precio al día"><%- Frescura.insignia(p) %></td>
-                                                    <td data-label="Compra" class="num precio-compra">S/ <%= p.precio_compra === null ? '—' : parseFloat(p.precio_compra).toFixed(2) %></td>
-                                                    <td data-label="Mayor" class="num precio-mayor">S/ <%= p.precio_mayor === null ? '—' : parseFloat(p.precio_mayor).toFixed(2) %></td>
-                                                    <td data-label="Unidad" class="num precio-unidad">S/ <%= p.precio_unidad === null ? '—' : parseFloat(p.precio_unidad).toFixed(2) %></td>
+                                                    <td data-label="Compra" class="num precio-compra"><span class="pill">S/ <%= p.precio_compra === null ? '—' : parseFloat(p.precio_compra).toFixed(2) %></span></td>
+                                                    <td data-label="Mayor" class="num precio-mayor"><span class="pill">S/ <%= p.precio_mayor === null ? '—' : parseFloat(p.precio_mayor).toFixed(2) %></span></td>
+                                                    <td data-label="Unidad" class="num precio-unidad"><span class="pill">S/ <%= p.precio_unidad === null ? '—' : parseFloat(p.precio_unidad).toFixed(2) %></span></td>
                                                     <td data-label="Acciones">
                                                         <div class="btns-simetricos">
                                                             <form action="/api/duplicados/conservar" method="POST"
