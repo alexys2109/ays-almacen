@@ -289,15 +289,15 @@ hr { border-color: var(--border); opacity: 1; }
 .table tbody td {
     padding: 13px 16px;
     vertical-align: middle;
-    border-bottom: 1px solid var(--border-soft);
+    border-bottom: 1px solid #dde3ec;
     font-size: 0.95rem;
     font-variant-numeric: tabular-nums;
     background: transparent;
 }
 
-.table tbody tr:nth-child(even) td { background: #f6f8fc; }
+.table tbody tr:nth-child(even) td { background: #eff3f9; }
 .table tbody tr:last-child td { border-bottom: 0; }
-.table tbody tr:hover td { background: #edf1f8; }
+.table tbody tr:hover td { background: #e4ebf6; }
 
 .table td[data-label="Nombre"] { min-width: 240px; font-weight: 600; color: var(--text); }
 
@@ -450,15 +450,15 @@ textarea.input-nombre:focus { border-color: var(--sec); outline: none; box-shado
     .card:has(> .table-responsive) { border-top: 0; background: transparent; box-shadow: none; border: 0; overflow: visible; }
     .table thead { display: none; }
     .table, .table tbody { display: block; width: 100%; }
-    .table tbody { display: grid; grid-template-columns: 1fr; gap: 14px; }
+    .table tbody { display: grid; grid-template-columns: 1fr; gap: 18px; }
 
     .table tbody tr {
         display: flex;
         flex-direction: column;
         background: var(--surface);
-        border: 1px solid var(--border);
+        border: 1px solid #b9c5d6;
         border-radius: var(--radius);
-        box-shadow: var(--shadow-sm);
+        box-shadow: 0 3px 10px rgba(16, 24, 40, 0.12);
         overflow: hidden;
     }
     .table tbody tr:hover td, .table tbody tr:nth-child(even) td { background: transparent; }
@@ -472,7 +472,7 @@ textarea.input-nombre:focus { border-color: var(--sec); outline: none; box-shado
         padding: 10px 16px;
         min-height: 48px;
         width: 100%;
-        border-bottom: 1px solid var(--border-soft);
+        border-bottom: 1px solid #e3e8f0;
     }
 
     .table tbody td::before {
@@ -498,8 +498,9 @@ textarea.input-nombre:focus { border-color: var(--sec); outline: none; box-shado
         padding: 14px 16px 12px;
         font-size: 1.04rem;
         line-height: 1.35;
-        background: #f1f4f9 !important;
-        color: var(--text);
+        background: #d9e3f1 !important;
+        color: var(--navy-dark);
+        border-bottom: 1px solid #b9c5d6;
     }
     .table tbody td[data-label="Nombre"]::before { display: none; }
     .table tbody td[data-label="Nombre"] textarea.input-nombre { min-width: 0; text-align: left; }
@@ -508,8 +509,9 @@ textarea.input-nombre:focus { border-color: var(--sec); outline: none; box-shado
     .table tbody td[data-label="Acciones"],
     .table tbody td[data-label="Eliminar"] {
         justify-content: center;
-        background: #f6f8fc !important;
+        background: #eef2f8 !important;
         border-bottom: 0;
+        border-top: 1px solid #d3dbe7;
         padding: 14px 16px;
     }
     .table tbody td[data-label="Guardar"]::before,
