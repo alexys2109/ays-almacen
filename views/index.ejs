@@ -75,19 +75,11 @@
                         </button>
                     </div>
                 </div>
-
-                <div class="chips-filtro mt-3" id="chips"></div>
             </div>
         </div>
 
         <div class="d-flex justify-content-between align-items-center mb-2 px-1 flex-wrap gap-2">
             <small class="text-muted" id="resumen"></small>
-            <div class="leyenda-frescura">
-                <span><i class="dot-frescura dot-verde"></i> hasta 7 días</span>
-                <span><i class="dot-frescura dot-amarillo"></i> hasta 30 días</span>
-                <span><i class="dot-frescura dot-naranja"></i> hasta 60 días</span>
-                <span><i class="dot-frescura dot-rojo"></i> más de 60 días</span>
-            </div>
         </div>
 
         <div class="card border-0 shadow-sm">
@@ -142,31 +134,12 @@
         const btnMas = document.getElementById('btnMas');
         const tbody = document.getElementById('tbody');
         const resumen = document.getElementById('resumen');
-        const chips = document.getElementById('chips');
 
         const PAGINA = 100;
         let mostrar = PAGINA;
-        let filtroFrescura = '';   // '', verde, amarillo, naranja, rojo
         let temporizador;
 
         const dinero = v => (v === null || v === undefined || v === '') ? '—' : 'S/ ' + parseFloat(v).toFixed(2);
-        const clase = p => Frescura.rango(p.seg_precio).clase;
-
-        function dibujarChips(base) {
-            const cuenta = { verde: 0, amarillo: 0, naranja: 0, rojo: 0 };
-            base.forEach(p => cuenta[clase(p)]++);
-            const dot = c => `<i class="dot-frescura dot-${c}"></i>`;
-            const def = [
-                ['', 'Todos', base.length, ''],
-                ['verde', 'Esta semana', cuenta.verde, dot('verde')],
-                ['amarillo', 'Hasta 30 días', cuenta.amarillo, dot('amarillo')],
-                ['naranja', '31 a 60 días', cuenta.naranja, dot('naranja')],
-                ['rojo', 'Más de 60 días', cuenta.rojo, dot('rojo')]
-            ];
-            chips.innerHTML = def.map(([val, txt, n, ico]) =>
-                `<button type="button" class="chip${filtroFrescura === val ? ' activo' : ''}" data-f="${val}">${ico}${txt}<span class="n">${n}</span></button>`
-            ).join('');
-        }
 
         function render() {
             const texto = buscador.value;
@@ -176,16 +149,8 @@
             let lista = Similitud.buscar(texto, indice).map(r => r.item);
             if (catId) lista = lista.filter(p => String(p.categoria_id) === catId);
 
-            // 2) contadores de las bolitas según lo ya buscado
-            dibujarChips(lista);
-            if (filtroFrescura) lista = lista.filter(p => clase(p) === filtroFrescura);
-
-            // 3) orden: con texto manda el parecido; con un filtro de color, lo más antiguo primero (lo más reciente en verde); si no, A-Z
-            if (!texto.trim()) {
-                if (filtroFrescura === 'verde') lista = lista.slice().sort((a, b) => (a.seg_precio ?? 1e12) - (b.seg_precio ?? 1e12));
-                else if (filtroFrescura) lista = lista.slice().sort((a, b) => (b.seg_precio ?? 1e12) - (a.seg_precio ?? 1e12));
-                else lista = lista.slice().sort((a, b) => a.nombre.localeCompare(b.nombre, 'es'));
-            }
+            // 2) orden: con texto manda el parecido; si no, A-Z
+            if (!texto.trim()) lista = lista.slice().sort((a, b) => a.nombre.localeCompare(b.nombre, 'es'));
 
             const total = lista.length;
             const visibles = lista.slice(0, mostrar);
@@ -208,14 +173,8 @@
         buscador.addEventListener('input', () => { clearTimeout(temporizador); temporizador = setTimeout(reiniciar, 120); });
         filtroCat.addEventListener('change', reiniciar);
         btnMas.addEventListener('click', () => { mostrar += PAGINA; render(); });
-        chips.addEventListener('click', e => {
-            const b = e.target.closest('button[data-f]');
-            if (!b) return;
-            filtroFrescura = b.dataset.f;
-            reiniciar();
-        });
         btnReset.addEventListener('click', () => {
-            buscador.value = ''; filtroCat.value = ''; filtroFrescura = '';
+            buscador.value = ''; filtroCat.value = '';
             reiniciar(); buscador.focus();
         });
 
