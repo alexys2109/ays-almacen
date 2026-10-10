@@ -1,6 +1,6 @@
 {
-    "name": "AYS Almacén - Precios",
-    "short_name": "AYS Almacén",
+    "name": "AYS Lista de Precios",
+    "short_name": "Precios AYS",
     "description": "Consulta y actualización de precios del almacén",
     "id": "/",
     "start_url": "/",
