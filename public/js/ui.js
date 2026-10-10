@@ -14,6 +14,14 @@
         if (e.key === 'Escape' && menu()) menu().classList.remove('active');
     });
 
+    // ---------- Sin zoom ni movimientos raros (la app debe verse siempre igual) ----------
+    ['gesturestart', 'gesturechange', 'gestureend'].forEach(function (nombre) {
+        document.addEventListener(nombre, function (e) { e.preventDefault(); }, { passive: false });
+    });
+    document.addEventListener('touchmove', function (e) {
+        if (e.touches && e.touches.length > 1) e.preventDefault();   // dos dedos = pellizco
+    }, { passive: false });
+
     // ---------- Servicio sin conexión (solo la pantalla de Buscar guarda una copia) ----------
     if ('serviceWorker' in navigator) {
         window.addEventListener('load', function () {

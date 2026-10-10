@@ -78,7 +78,12 @@ body[data-sec="eliminar"]   { --sec: #b2423a; --sec-ink: #85302a; --sec-band: #f
 body[data-sec="lista"]      { --sec: #23808a; --sec-ink: #155961; --sec-band: #cfe9ec; --sec-edge: #a2cbd0; --sec-zebra: #eff8f9; --sec-hover: #def0f2; }
 
 * { box-sizing: border-box; }
-html { -webkit-text-size-adjust: 100%; }
+html { -webkit-text-size-adjust: 100%; background: var(--bg); overflow-x: hidden; max-width: 100%; }
+
+/* App "estática": sin zoom por doble toque, sin pellizcar para acercar, sin rebote ni arrastre hacia los lados */
+html, body { touch-action: pan-y; overscroll-behavior: none; }
+body { -webkit-tap-highlight-color: transparent; }
+button, a, label, .chip, .btn { touch-action: manipulation; }
 
 body {
     font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
@@ -555,4 +560,16 @@ textarea.input-nombre:focus { border-color: var(--sec); outline: none; box-shado
 
 @media (min-width: 992px) {
     .table-responsive { content-visibility: auto; contain-intrinsic-size: 1px 1000px; }
+}
+
+
+/* =========================================================
+   iPhone / celulares: evitar el zoom automático al tocar un campo.
+   Safari acerca la pantalla si el texto del campo mide menos de 16px.
+   ========================================================= */
+@media (max-width: 991px), (pointer: coarse) {
+    input, select, textarea, .form-control, .form-select, textarea.input-nombre {
+        font-size: 16px !important;
+    }
+    .sidebar { height: 100vh; height: 100dvh; }
 }
