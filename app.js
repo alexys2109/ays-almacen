@@ -34,7 +34,11 @@ app.use(express.json());
 app.use(cookieParser());
 
 // Chequeo liviano (no usa la base de datos): sirve para mantener despierto el servicio con un monitor externo
-app.get('/salud', (req, res) => res.type('text').send('ok'));
+app.get('/salud', async (req, res) => {
+    // También despierta la conexión a la base de datos, para que la primera pantalla de quien llega no espere
+    try { await Promise.race([db.query('SELECT 1'), new Promise(r => setTimeout(r, 4000))]); } catch (e) { /* aun así responde */ }
+    res.type('text').send('ok');
+});
 
 // Servicio de la app (copia de Buscar para uso sin internet). Lleva la versión del servidor para actualizarse en cada despliegue.
 const swPlantilla = fs.readFileSync(path.join(__dirname, 'src', 'sw.js'), 'utf8');
@@ -111,12 +115,27 @@ const COLS_PRODUCTO = `p.*,
 // Caché en memoria de la lista de productos (se invalida en cada cambio). Evita ir a la base de datos
 // en la nube en cada pantalla. Los "segundos transcurridos" se ajustan según el tiempo que lleva en caché.
 let cacheProductos = { filas: null, en: 0 };
-const VIDA_CACHE_MS = 30 * 1000;
+let actualizandoProductos = null;
+const VIDA_CACHE_MS = 30 * 1000;          // pasado este tiempo se actualiza en segundo plano
+const MAX_VIEJO_MS = 10 * 60 * 1000;      // si lo guardado es más viejo que esto, se espera a la lista nueva
 function invalidarProductos() { cacheProductos = { filas: null, en: 0 }; }
+
+function cargarProductos() {
+    if (!actualizandoProductos) {
+        actualizandoProductos = db.query(`SELECT ${COLS_PRODUCTO} FROM productos p ORDER BY p.nombre ASC`)
+            .then(([filas]) => { cacheProductos = { filas, en: Date.now() }; return filas; })
+            .finally(() => { actualizandoProductos = null; });
+    }
+    return actualizandoProductos;
+}
+
 async function listarProductos() {
-    if (!cacheProductos.filas || Date.now() - cacheProductos.en > VIDA_CACHE_MS) {
-        const [filas] = await db.query(`SELECT ${COLS_PRODUCTO} FROM productos p ORDER BY p.nombre ASC`);
-        cacheProductos = { filas, en: Date.now() };
+    const edad = Date.now() - cacheProductos.en;
+    if (!cacheProductos.filas || edad > MAX_VIEJO_MS) {
+        await cargarProductos();
+    } else if (edad > VIDA_CACHE_MS) {
+        // la pantalla no espera a la base de datos: se muestra lo guardado y se actualiza por detrás
+        cargarProductos().catch(e => console.error('No se pudo actualizar la lista de productos:', e.message));
     }
     const extra = Math.floor((Date.now() - cacheProductos.en) / 1000);
     if (!extra) return cacheProductos.filas;
